@@ -10,8 +10,12 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "latest",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^10.0.0",
     "@types/node": "^20.11.0",
+    "chai": "^4.3.0",
     "dotenv": "latest",
+    "ethers": "^6.0.0",
     "hardhat": "^2.22.0",
     "typescript": "^5.3.3"
   }
