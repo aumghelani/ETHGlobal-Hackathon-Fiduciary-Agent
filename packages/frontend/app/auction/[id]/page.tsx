@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { CheckCircle } from 'lucide-react';
 import { BidCard } from '@/components/BidCard';
 import type { Bid } from '@fiduciary/agents';
 
@@ -56,6 +57,9 @@ export default function AuctionPage() {
     ? bids.reduce((max, b) => b.netToFreelancer > max.netToFreelancer ? b : max)
     : null;
 
+  const vetBid = bids.find(b => b.agentName === 'Veteran Agent');
+  const newbieBid = bids.find(b => b.agentName === 'Newbie Agent');
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="text-center mb-8">
@@ -98,6 +102,29 @@ export default function AuctionPage() {
           }}
         />
       </div>
+
+      {bids.length === 2 && vetBid && newbieBid && (
+        <div className="mt-8 p-6 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="text-emerald-600 mt-1" size={20} />
+            <div>
+              <h3 className="font-semibold text-emerald-900">Notice the difference</h3>
+              <p className="text-sm text-emerald-800 mt-1">
+                The Veteran agent offers you ${vetBid.netToFreelancer.toLocaleString()} — that&apos;s
+                ${(vetBid.netToFreelancer - newbieBid.netToFreelancer).toFixed(2)} more than the Newbie agent.
+              </p>
+              <p className="text-sm text-emerald-800 mt-1">
+                Yet the Veteran earns only ${vetBid.agentEarnings.toFixed(2)}, while the Newbie would
+                earn ${newbieBid.agentEarnings.toFixed(2)}.
+              </p>
+              <p className="text-xs text-emerald-700 mt-2 italic">
+                Trusted agents compete harder for your business. Reputation compresses fees — the market
+                prices away the risk premium.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && bids.length === 0 && (
         <p className="text-center text-slate-500 mt-6 text-sm">
