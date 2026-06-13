@@ -1,4 +1,4 @@
-import { Star, CheckCircle, MessageSquare } from "lucide-react";
+import { Star, CheckCircle, MessageSquare, Loader2 } from "lucide-react";
 import type { Bid } from "@fiduciary/agents";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,11 +41,7 @@ export function BidCard({
 
       {bid === null ? (
         <div className="flex flex-col items-center justify-center py-10">
-          <div className="flex gap-1.5">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 [animation-delay:0ms]" />
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 [animation-delay:150ms]" />
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 [animation-delay:300ms]" />
-          </div>
+          <Loader2 className="animate-spin text-emerald-500" size={32} />
           <p className="mt-3 text-sm text-slate-500">Analyzing invoice...</p>
         </div>
       ) : (
