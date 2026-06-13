@@ -1,9 +1,13 @@
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { Client, AccountId, PrivateKey } from "@hashgraph/sdk";
 import { config as loadEnv } from "dotenv";
 
 // Load .env.local from the repo root. Hedera operations run server-side only,
 // so credentials live in the process environment, never the browser.
-loadEnv({ path: new URL("../../../.env.local", import.meta.url).pathname });
+// fileURLToPath (not URL.pathname) is required for correct paths on Windows.
+const here = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(here, "../../../.env.local") });
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -33,11 +37,13 @@ export function getClient(): Client {
 
   let privateKey: PrivateKey;
   try {
-    privateKey = PrivateKey.fromStringED25519(operatorKey);
+    // fromStringDer auto-detects ECDSA vs ED25519 from the DER wrapper.
+    // Portal testnet accounts default to ECDSA.
+    privateKey = PrivateKey.fromStringDer(operatorKey);
   } catch {
     throw new Error(
-      `HEDERA_OPERATOR_KEY is malformed or not a valid ED25519 private key. ` +
-        `Copy the DER-encoded private key from portal.hedera.com.`
+      `HEDERA_OPERATOR_KEY is malformed or not a valid DER-encoded private key. ` +
+        `Copy the "DER Encoded Private Key" from portal.hedera.com.`
     );
   }
 
