@@ -12,3 +12,4 @@ export {
   calculateClientTrust,
 } from './reputation.js';
 export { generateDeterministicBid } from './bidLogic.js';
+export { generateBid } from './llmBidLogic.js';

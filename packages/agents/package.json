@@ -9,6 +9,7 @@
     "test:reputation": "tsx ../../scripts/test-reputation.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "latest",
     "dotenv": "latest"
   },
   "devDependencies": {
