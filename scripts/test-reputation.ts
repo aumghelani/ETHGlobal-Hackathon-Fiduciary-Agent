@@ -90,3 +90,59 @@ if (vetBid && newBid) {
       `=> earns less per deal ($${vetBid.agentEarnings} vs $${newBid.agentEarnings})`
   );
 }
+
+const riskyInvoice: Invoice = {
+  id: "demo-002",
+  amountUsd: 3000,
+  daysUntilDue: 90,
+  freelancer: {
+    identityVerified: false,
+    ensSubname: null,
+    successfulInvoices: 0,
+    disputedInvoices: 1,
+    totalVolumeReceived: 0,
+    averagePaymentDelay: 15,
+    accountAgeInDays: 14,
+    uniqueClientsCount: 1,
+  },
+  client: {
+    isVerifiedBusiness: false,
+    invoicesPaidOnTime: 0,
+    invoicesPaidLate: 2,
+    invoicesUnpaid: 1,
+    totalVolumePaid: 500,
+    averagePaymentDelay: 20,
+  },
+};
+
+const vetRiskyBid = generateDeterministicBid(riskyInvoice, veteran);
+const newRiskyBid = generateDeterministicBid(riskyInvoice, newbie);
+
+console.log(`\nInvoice 2 (high risk): $${riskyInvoice.amountUsd}, due in ${riskyInvoice.daysUntilDue} days\n`);
+console.log(`${veteran.name} (rep ${veteran.reputation.score}/5)`);
+if (vetRiskyBid === null) {
+  console.log(`  Veteran: PASSED on this invoice (too risky)\n`);
+} else {
+  console.log(`  ${fmt(vetRiskyBid)}\n`);
+}
+console.log(`${newbie.name} (rep ${newbie.reputation.score}/5)`);
+console.log(`  ${fmt(newRiskyBid)}\n`);
+
+let failed = false;
+
+if (
+  vetBid === null ||
+  newBid === null ||
+  !(vetBid.discountPercent < newBid.discountPercent) ||
+  !(vetBid.feePercent < newBid.feePercent)
+) {
+  console.log("INVERSION FAILED");
+  failed = true;
+}
+
+if (vetRiskyBid !== null || newRiskyBid === null) {
+  console.log("PASS PATH FAILED");
+  failed = true;
+}
+
+if (failed) process.exit(1);

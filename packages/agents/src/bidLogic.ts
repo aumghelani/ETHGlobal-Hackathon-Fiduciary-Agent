@@ -11,12 +11,13 @@ export function generateDeterministicBid(invoice: Invoice, agent: Agent): Bid | 
   // PASS if too risky for this agent
   if (riskScore < agent.minimumRiskScore) return null;
 
-  // Discount: inverse of risk
-  const baseDiscount = (1 - riskScore) * 15;
-
-  // Reputation lets agent absorb risk with smaller discount
-  const reputationDiscount = (agent.reputation.score / 5.0) * 2;
-  const finalDiscount = Math.max(2, baseDiscount - reputationDiscount);
+  // Discount: inverse of risk, with reputation compression proportional
+  // to the risk-driven discount so veterans differentiate even at low risk
+  const minDiscount = 1.5;
+  const maxDiscount = 15;
+  const riskComponent = (1 - riskScore) * (maxDiscount - minDiscount);
+  const discountCompression = (agent.reputation.score / 5.0) * (riskComponent * 0.6);
+  const finalDiscount = Math.max(minDiscount, riskComponent - discountCompression + minDiscount);
 
   // Fee — reputation COMPRESSES it (the inversion)
   const baseFee = 2.5;
