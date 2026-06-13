@@ -18,6 +18,22 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/agents:
+    dependencies:
+      dotenv:
+        specifier: latest
+        version: 17.4.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.43
+      tsx:
+        specifier: ^4.7.0
+        version: 4.22.4
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   packages/hedera:
     dependencies:
       '@hashgraph/sdk':
