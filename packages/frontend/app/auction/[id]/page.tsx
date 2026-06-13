@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { BidCard } from '@/components/BidCard';
+import { HcsAuditLink } from '@/components/HcsAuditLink';
 import type { Bid } from '@fiduciary/agents';
 
 export default function AuctionPage() {
@@ -14,6 +15,18 @@ export default function AuctionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState<string | null>(null);
+  // HCS attestation for the subtle "Audit log on Hedera" link (surfaced here, after
+  // the hash was committed at upload — earlier in the flow than /invest).
+  const [hcs, setHcs] = useState<{ seq: number | null; topicId: string | null }>({ seq: null, topicId: null });
+
+  useEffect(() => {
+    fetch(`/api/invoices/${invoiceId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.invoice) setHcs({ seq: d.invoice.hcsSequenceNumber ?? null, topicId: d.hcsTopicId ?? null });
+      })
+      .catch(() => {});
+  }, [invoiceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +160,16 @@ export default function AuctionPage() {
         <p className="text-center text-slate-500 mt-6 text-sm">
           Typically takes 2-4 seconds
         </p>
+      )}
+
+      {hcs.seq !== null && hcs.topicId && (
+        <div className="mt-10 flex flex-col items-center gap-1">
+          <p className="flex items-center gap-1.5 text-xs text-slate-400">
+            <CheckCircle size={13} className="text-emerald-400" />
+            This invoice is committed to the audit log.
+          </p>
+          <HcsAuditLink seq={hcs.seq} topicId={hcs.topicId} className="text-xs text-slate-400" />
+        </div>
       )}
     </div>
   );

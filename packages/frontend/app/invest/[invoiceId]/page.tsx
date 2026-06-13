@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CheckCircle2, X, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { HcsAuditLink } from '@/components/HcsAuditLink';
 
 type InvestData = {
   clientName: string;
@@ -253,26 +254,5 @@ export default function InvestInvoicePage() {
 
       <HcsAuditLink seq={data.hcsSequenceNumber} topicId={data.hcsTopicId} />
     </div>
-  );
-}
-
-// Small footer-style attribution link to the invoice's HCS audit-log entry
-// (THREAT_MODEL Layer 3). The ONLY blockchain reference allowed in user-facing
-// copy is this kind of subtle attestation link (UX rule). Renders nothing if the
-// hash wasn't committed (submit failed) or the topic ID is unknown. Points at the
-// topic on HashScan — the per-message URL format isn't reliably supported.
-function HcsAuditLink({ seq, topicId }: { seq: number | null; topicId: string | null }) {
-  if (seq === null || !topicId) return null;
-  return (
-    <p className="mt-6 text-center text-xs text-slate-400">
-      <a
-        href={`https://hashscan.io/testnet/topic/${topicId}`}
-        target="_blank"
-        rel="noopener"
-        className="underline hover:text-slate-600"
-      >
-        Audit log on Hedera ↗
-      </a>
-    </p>
   );
 }

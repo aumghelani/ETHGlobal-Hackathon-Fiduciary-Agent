@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IDKitRequestWidget, proofOfHuman, type IDKitResult, type RpContext } from "@worldcoin/idkit";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ export default function UploadPage() {
   const [daysUntilDue, setDaysUntilDue] = useState("60");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Distinct from a generic error: set when the upload is rejected as a duplicate
+  // (HCS double-spend defense, 409). Rendered as a prominent "already factored" card.
+  const [duplicate, setDuplicate] = useState(false);
   // The verified World ID v4 result (null until verification completes). Degrades to
   // null when World ID is disabled (gate bypassed).
   const [worldIdResult, setWorldIdResult] = useState<IDKitResult | null>(null);
@@ -60,6 +63,7 @@ export default function UploadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setDuplicate(false);
 
     const amount = Number(amountUsd);
     const days = Number(daysUntilDue);
@@ -104,7 +108,13 @@ export default function UploadPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Something went wrong. Please try again.");
+        // 409 = HCS double-spend defense fired (this invoice hash is already on the
+        // audit log). Show the distinct "already factored" card, not a generic error.
+        if (res.status === 409) {
+          setDuplicate(true);
+        } else {
+          setError(data.error ?? "Something went wrong. Please try again.");
+        }
         setIsSubmitting(false);
         return;
       }
@@ -240,6 +250,19 @@ export default function UploadPage() {
         </Button>
 
         {error && <p className="text-center text-sm text-red-600">{error}</p>}
+
+        {duplicate && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-500" />
+            <div>
+              <p className="font-semibold">This invoice has already been factored.</p>
+              <p className="mt-1 text-amber-800">
+                Our audit log shows this exact invoice was already submitted — it can&apos;t be sold twice.
+                Upload a different invoice to continue.
+              </p>
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-xs text-slate-400">
           Trusted by 70M+ freelancers
