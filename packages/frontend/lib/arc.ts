@@ -38,50 +38,73 @@ export function getWallet(): ethers.Wallet {
 
 const USDC_DECIMALS = BigInt(1_000_000);
 
+// Arc testnet RPC occasionally drops a request at the connection level (transient
+// TIMEOUT/ECONNRESET) even on a stable network. These are pre-submission connect
+// failures, so retrying is safe. Retry a few times with a short backoff before
+// surfacing the error — the operation almost always succeeds on the next attempt.
+async function withRetry<T>(fn: () => Promise<T>, tries = 3, delayMs = 2000): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < tries - 1) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // Deploy a fresh per-invoice pool with a small fundable target (faucet-feasible).
 export async function deployPool(targetUsdc: number, clientPaymentUsdc: number, agentFeeBps: number): Promise<string> {
-  const wallet = getWallet();
-  const factory = new ethers.ContractFactory(POOL_ABI, POOL_BYTECODE, wallet);
-  const freelancer = process.env.FREELANCER_ADDRESS!;
-  const agent = process.env.AGENT_ADDRESS!;
-  const usdc = process.env.ARC_USDC_ADDRESS!;
-  const pool = await factory.deploy(
-    freelancer,
-    agent,
-    BigInt(targetUsdc) * USDC_DECIMALS,
-    BigInt(clientPaymentUsdc) * USDC_DECIMALS,
-    agentFeeBps,
-    usdc
-  );
-  await pool.waitForDeployment();
-  return await pool.getAddress();
+  return withRetry(async () => {
+    const wallet = getWallet();
+    const factory = new ethers.ContractFactory(POOL_ABI, POOL_BYTECODE, wallet);
+    const freelancer = process.env.FREELANCER_ADDRESS!;
+    const agent = process.env.AGENT_ADDRESS!;
+    const usdc = process.env.ARC_USDC_ADDRESS!;
+    const pool = await factory.deploy(
+      freelancer,
+      agent,
+      BigInt(targetUsdc) * USDC_DECIMALS,
+      BigInt(clientPaymentUsdc) * USDC_DECIMALS,
+      agentFeeBps,
+      usdc
+    );
+    await pool.waitForDeployment();
+    return await pool.getAddress();
+  });
 }
 
 export async function getPoolState(poolAddress: string): Promise<{ raised: number; target: number; remaining: number; funded: boolean }> {
-  const pool = new ethers.Contract(poolAddress, POOL_ABI, getProvider());
-  const [raised, target, funded] = await Promise.all([
-    pool.totalRaised(),
-    pool.targetAmount(),
-    pool.funded(),
-  ]);
-  const r = Number(raised) / 1_000_000;
-  const t = Number(target) / 1_000_000;
-  return { raised: r, target: t, remaining: Math.max(0, t - r), funded };
+  return withRetry(async () => {
+    const pool = new ethers.Contract(poolAddress, POOL_ABI, getProvider());
+    const [raised, target, funded] = await Promise.all([
+      pool.totalRaised(),
+      pool.targetAmount(),
+      pool.funded(),
+    ]);
+    const r = Number(raised) / 1_000_000;
+    const t = Number(target) / 1_000_000;
+    return { raised: r, target: t, remaining: Math.max(0, t - r), funded };
+  });
 }
 
 export async function fundPool(poolAddress: string, amountUsdc: number): Promise<{ txHash: string }> {
-  const wallet = getWallet();
-  const amount = BigInt(Math.round(amountUsdc * 1_000_000));
-  const usdc = new ethers.Contract(process.env.ARC_USDC_ADDRESS!, ERC20_ABI, wallet);
+  return withRetry(async () => {
+    const wallet = getWallet();
+    const amount = BigInt(Math.round(amountUsdc * 1_000_000));
+    const usdc = new ethers.Contract(process.env.ARC_USDC_ADDRESS!, ERC20_ABI, wallet);
 
-  const existing: bigint = await usdc.allowance(wallet.address, poolAddress);
-  if (existing < amount) {
-    const approveTx = await usdc.approve(poolAddress, amount);
-    await approveTx.wait();
-  }
+    const existing: bigint = await usdc.allowance(wallet.address, poolAddress);
+    if (existing < amount) {
+      const approveTx = await usdc.approve(poolAddress, amount);
+      await approveTx.wait();
+    }
 
-  const pool = new ethers.Contract(poolAddress, POOL_ABI, wallet);
-  const depositTx = await pool.deposit(amount);
-  await depositTx.wait();
-  return { txHash: depositTx.hash };
+    const pool = new ethers.Contract(poolAddress, POOL_ABI, wallet);
+    const depositTx = await pool.deposit(amount);
+    await depositTx.wait();
+    return { txHash: depositTx.hash };
+  });
 }

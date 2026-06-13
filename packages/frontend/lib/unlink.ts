@@ -6,6 +6,22 @@ import { buildDeriveSeedMessage } from '@unlink-xyz/sdk/crypto';
 const ENV = 'arc-testnet';
 const CHAIN_ID = 5042002;
 
+// Retry transient connect failures (Arc RPC / Unlink engine occasionally drop a
+// request even on a stable network). Register is idempotent, so re-running the
+// network flow is safe.
+async function withRetry<T>(fn: () => Promise<T>, tries = 3, delayMs = 2000): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < tries - 1) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 function getWallet(): ethers.Wallet {
   const fr = new ethers.FetchRequest(process.env.ARC_RPC_URL!);
   fr.timeout = 60_000;
@@ -33,35 +49,38 @@ export async function privateDepositOnUnlink({
   const signature = await wallet.signMessage(msg);
   const unlinkAccount = account.fromEthereumSignature({ signature, appId, chainId: CHAIN_ID });
 
-  // 2-3. Admin: register the account + issue an authorization token.
-  const admin = createUnlinkAdmin({ environment: ENV, apiKey });
-  const payload = await account.toRegistrationPayload(unlinkAccount);
-  const reg = await admin.users.register(payload);
-  const authToken = await admin.authorizationTokens.issue({
-    unlinkAddress: reg.address,
-    subjectType: 'unlink_address',
-  });
+  // Steps 2-5 touch the network — retry the whole flow on a transient drop.
+  return withRetry(async () => {
+    // 2-3. Admin: register the account + issue an authorization token.
+    const admin = createUnlinkAdmin({ environment: ENV, apiKey });
+    const payload = await account.toRegistrationPayload(unlinkAccount);
+    const reg = await admin.users.register(payload);
+    const authToken = await admin.authorizationTokens.issue({
+      unlinkAddress: reg.address,
+      subjectType: 'unlink_address',
+    });
 
-  // 4. User client with the authorization token + ethers-backed EVM provider.
-  const client = createUnlinkClient({
-    environment: ENV,
-    account: unlinkAccount,
-    evm: evm.fromEthers({ signer: wallet }),
-    authorizationToken: {
-      provider: async () => ({ token: authToken.token, expiresAt: authToken.expiresAt }),
-    },
-  });
+    // 4. User client with the authorization token + ethers-backed EVM provider.
+    const client = createUnlinkClient({
+      environment: ENV,
+      account: unlinkAccount,
+      evm: evm.fromEthers({ signer: wallet }),
+      authorizationToken: {
+        provider: async () => ({ token: authToken.token, expiresAt: authToken.expiresAt }),
+      },
+    });
 
-  // 5. Deposit raw Arc USDC into the privacy pool.
-  const info = await client.getEnvironmentInfo();
-  const tx = await client.depositWithApproval({
-    token: process.env.ARC_USDC_ADDRESS!,
-    amount: amountUsdc.toString(),
-  });
-  const result = await tx.wait();
+    // 5. Deposit raw Arc USDC into the privacy pool.
+    const info = await client.getEnvironmentInfo();
+    const tx = await client.depositWithApproval({
+      token: process.env.ARC_USDC_ADDRESS!,
+      amount: amountUsdc.toString(),
+    });
+    const result = await tx.wait();
 
-  return {
-    txHash: result.txHash ?? tx.txHash ?? '',
-    poolAddress: (info as any).pool_address,
-  };
+    return {
+      txHash: result.txHash ?? tx.txHash ?? '',
+      poolAddress: (info as any).pool_address,
+    };
+  });
 }
