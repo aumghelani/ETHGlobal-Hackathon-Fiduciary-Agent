@@ -18,13 +18,24 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   const veteran = store.agents.get('veteran')!;
   const newbie = store.agents.get('newbie')!;
 
-  // Fire both bids in parallel — this is the key parallelism for the live feel
-  const [veteranBid, newbieBid] = await Promise.all([
-    generateBid(invoice, veteran),
-    generateBid(invoice, newbie),
-  ]);
-
-  const bids = [veteranBid, newbieBid].filter((b): b is NonNullable<typeof b> => b !== null);
+  // Fire both bids in parallel — this is the key parallelism for the live feel.
+  // generateBid already falls back to deterministic reasoning on LLM failure, but wrap
+  // the whole thing so an unexpected throw returns a JSON error, never an empty 500
+  // (the auction is the demo's hero moment — it must not white-screen).
+  let bids;
+  try {
+    const [veteranBid, newbieBid] = await Promise.all([
+      generateBid(invoice, veteran),
+      generateBid(invoice, newbie),
+    ]);
+    bids = [veteranBid, newbieBid].filter((b): b is NonNullable<typeof b> => b !== null);
+  } catch (err) {
+    console.error('[auction/start] bid generation failed:', err);
+    return NextResponse.json(
+      { error: 'Could not run the auction. Please try again.' },
+      { status: 502 }
+    );
+  }
   store.bids.set(params.invoiceId, bids);
 
   return NextResponse.json({ bids, fromCache: false });
