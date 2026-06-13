@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle2, X, Lock } from 'lucide-react';
+import { CheckCircle2, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -33,7 +33,6 @@ type InvestData = {
 
 export default function InvestInvoicePage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const invoiceId = params.invoiceId as string;
 
   const [data, setData] = useState<InvestData | null>(null);
@@ -42,7 +41,6 @@ export default function InvestInvoicePage() {
   const [funding, setFunding] = useState(false);
   const [error, setError] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [showBanner, setShowBanner] = useState(searchParams.get('from') === 'accept');
 
   async function refresh() {
     const res = await fetch(`/api/invest/${invoiceId}`);
@@ -141,29 +139,6 @@ export default function InvestInvoicePage() {
 
   return (
     <div className="mx-auto max-w-md">
-      {showBanner && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative mb-6 rounded-lg border border-brand/30 bg-brand/[0.07] p-5 text-center"
-        >
-          <button
-            onClick={() => setShowBanner(false)}
-            className="absolute right-3 top-3 text-fg-subtle hover:text-fg-muted"
-            aria-label="Dismiss"
-          >
-            <X size={16} />
-          </button>
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand/15">
-            <CheckCircle2 className="text-brand" size={26} />
-          </span>
-          <h2 className="mt-2 font-display text-lg font-bold text-fg">Your offer is secured</h2>
-          <p className="mt-1 text-sm text-fg-muted">
-            <Money usd={net} maxFractionDigits={0} /> arrives in your account within 24 hours
-          </p>
-        </motion.div>
-      )}
-
       <h1 className="font-display text-2xl font-bold tracking-tight text-fg">Fund this invoice</h1>
 
       <Card className="mt-5 divide-y divide-line">
