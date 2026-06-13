@@ -131,6 +131,14 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   const store = getStore();
-  const invoices = Array.from(store.invoices.values());
+  // Enrich each invoice with its accepted agent's fee% (from the winning bid) so the
+  // marketplace can show an indicative yield without an extra fetch per card.
+  const invoices = Array.from(store.invoices.entries()).map(([id, inv]) => {
+    const acceptedName = (inv as any).acceptedAgentName;
+    const winningBid = acceptedName
+      ? (store.bids.get(id) || []).find((b) => b.agentName === acceptedName)
+      : undefined;
+    return { ...inv, feePercent: winningBid?.feePercent ?? null };
+  });
   return NextResponse.json({ invoices });
 }
