@@ -2,8 +2,18 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Money } from '@/components/Money';
+import { useUI } from '@/components/providers';
+
+function celebrate() {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const brand = ['#10B981', '#34D399', '#6366F1'];
+  confetti({ particleCount: 90, spread: 70, origin: { y: 0.3 }, colors: brand, scalar: 0.9 });
+}
 
 type Summary = {
   clientName: string;
@@ -26,6 +36,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function SettlePage() {
   const params = useParams();
+  const { proMode } = useUI();
   const invoiceId = params.invoiceId as string;
 
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -62,10 +73,11 @@ export default function SettlePage() {
       }
       setResult(data);
       setStep(1);
-      await sleep(450);
+      await sleep(550);
       setStep(2);
-      await sleep(450);
+      await sleep(550);
       setStep(3);
+      celebrate();
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -75,92 +87,107 @@ export default function SettlePage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Demo control</p>
-      <h1 className="mt-1 text-2xl font-bold text-slate-900">Settlement</h1>
+      <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Demo control</p>
+      <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-fg">Settlement</h1>
+      <p className="mt-1 text-sm text-fg-muted">Simulate the client paying — watch the money flow through.</p>
 
       {summary && (
-        <div className="mt-4 rounded-lg border border-slate-200 p-4 text-sm text-slate-700">
-          <div>Client: {summary.clientName}</div>
-          <div>Invoice amount: ${summary.amountUsd.toLocaleString()}</div>
-          {summary.agentName && <div>Winning agent: {summary.agentName}</div>}
+        <div className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm shadow-sm">
+          <div className="flex justify-between"><span className="text-fg-muted">Client</span><span className="font-medium text-fg">{summary.clientName}</span></div>
+          <div className="mt-1.5 flex justify-between"><span className="text-fg-muted">Invoice amount</span><span className="font-medium text-fg"><Money usd={summary.amountUsd} /></span></div>
+          {summary.agentName && (
+            <div className="mt-1.5 flex justify-between"><span className="text-fg-muted">Winning agent</span><span className="font-medium text-fg">{summary.agentName}</span></div>
+          )}
         </div>
       )}
 
-      <Button className="mt-6 w-full" size="lg" onClick={handleSettle} disabled={settling}>
+      <Button className="mt-6 w-full" size="lg" onClick={handleSettle} disabled={settling || step >= 3}>
         {settling ? (
           <>
-            <Loader2 className="mr-2 animate-spin" size={16} /> Processing payment...
+            <Loader2 className="mr-2 animate-spin" size={16} /> Processing payment…
           </>
+        ) : step >= 3 ? (
+          'Settled ✓'
         ) : (
           'Simulate client payment'
         )}
       </Button>
 
       {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           {error}
         </div>
       )}
 
-      <div className="mt-8 space-y-4">
-        {/* Step 1 — Client payment received */}
-        <CascadeStep
-          active={step >= 1}
-          title="Client payment received"
-          done={step >= 1}
-        >
+      <div className="mt-8 space-y-3">
+        {/* Step 1 — money reaches investors */}
+        <CascadeStep active={step >= 1} title="Client payment received" done={step >= 1}>
           {result && (
             <>
-              Client paid ${summary?.amountUsd.toLocaleString()} → investors received $
-              {result.distributedToInvestorsUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}.{' '}
-              <a href={result.arcscanUrl} target="_blank" rel="noopener" className="text-slate-400 underline hover:text-slate-600">
-                View on Arc ↗
-              </a>
+              Client paid <Money usd={summary?.amountUsd ?? 0} maxFractionDigits={0} /> → investors received{' '}
+              <span className="font-medium text-fg">
+                <Money usd={result.distributedToInvestorsUsd} />
+              </span>
+              .
+              {proMode && (
+                <a href={result.arcscanUrl} target="_blank" rel="noopener" className="ml-1 text-fg-subtle underline hover:text-fg-muted">
+                  View on Arc ↗
+                </a>
+              )}
             </>
           )}
           {partial && (
             <>
-              Payment settled.{' '}
-              <a href={partial.arcscanUrl} target="_blank" rel="noopener" className="text-slate-400 underline hover:text-slate-600">
-                View on Arc ↗
-              </a>
+              Payment settled.
+              {proMode && (
+                <a href={partial.arcscanUrl} target="_blank" rel="noopener" className="ml-1 text-fg-subtle underline hover:text-fg-muted">
+                  View on Arc ↗
+                </a>
+              )}
             </>
           )}
         </CascadeStep>
 
-        {/* Step 2 — Distribution executing */}
+        {/* Step 2 — distribution fires */}
         <CascadeStep
-          active={step >= 2 || (!!partial)}
-          title="Distribution executing on the agent network"
+          active={step >= 2 || !!partial}
+          title="Payouts distributed to backers"
           done={step >= 2}
           failed={!!partial}
         >
           {result && step >= 2 && (
             <>
-              Distribution schedule fired.{' '}
-              <a href={result.hashscanScheduleUrl} target="_blank" rel="noopener" className="text-slate-400 underline hover:text-slate-600">
-                Verification on Hedera ↗
-              </a>
+              Each backer&apos;s share was sent automatically.
+              {proMode && (
+                <a href={result.hashscanScheduleUrl} target="_blank" rel="noopener" className="ml-1 text-fg-subtle underline hover:text-fg-muted">
+                  Verify on Hedera ↗
+                </a>
+              )}
             </>
           )}
-          {partial && <>Could not complete the distribution schedule — payment already settled.</>}
+          {partial && <>Could not complete the distribution — payment already settled.</>}
         </CascadeStep>
 
-        {/* Step 3 — Reputation updated */}
+        {/* Step 3 — reputation */}
         <CascadeStep active={step >= 3} title="Agent reputation updated" done={step >= 3}>
           {result && step >= 3 && summary?.agentName && (
             <>
-              {summary.agentName} reputation:{' '}
-              {result.agentReputationBefore?.toFixed(2)} → {result.agentReputationAfter?.toFixed(2)}
+              {summary.agentName}:{' '}
+              <span className="font-medium text-fg tnum">
+                {result.agentReputationBefore?.toFixed(2)} → {result.agentReputationAfter?.toFixed(2)}
+              </span>
             </>
           )}
         </CascadeStep>
       </div>
 
       {step >= 3 && (
-        <Link href={`/invest/${invoiceId}`} className="mt-8 inline-block text-sm font-medium text-primary hover:underline">
-          View invoice →
+        <Link
+          href={`/invest/${invoiceId}`}
+          className="mt-8 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
+        >
+          View invoice <ArrowRight size={15} />
         </Link>
       )}
     </div>
@@ -181,19 +208,24 @@ function CascadeStep({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={'flex items-start gap-3 rounded-lg border p-3 ' + (active ? 'border-slate-200' : 'border-slate-100 opacity-40')}>
+    <div
+      className={
+        'flex items-start gap-3 rounded-md border p-3.5 transition-all duration-300 ' +
+        (active ? 'border-line bg-surface shadow-sm' : 'border-line/60 opacity-40')
+      }
+    >
       <span className="mt-0.5 shrink-0">
         {failed ? (
-          <AlertCircle size={18} className="text-amber-500" />
+          <AlertCircle size={18} className="text-warn" />
         ) : done ? (
-          <CheckCircle2 size={18} className="text-emerald-500" />
+          <CheckCircle2 size={18} className="text-brand" />
         ) : (
-          <Loader2 size={18} className={active ? 'animate-spin text-slate-400' : 'text-slate-300'} />
+          <Loader2 size={18} className={active ? 'animate-spin text-fg-subtle' : 'text-fg-subtle/50'} />
         )}
       </span>
       <div>
-        <div className="text-sm font-medium text-slate-800">{title}</div>
-        {children && <div className="mt-1 text-sm text-slate-600">{children}</div>}
+        <div className="text-sm font-medium text-fg">{title}</div>
+        {children && <div className="mt-1 text-sm text-fg-muted">{children}</div>}
       </div>
     </div>
   );
