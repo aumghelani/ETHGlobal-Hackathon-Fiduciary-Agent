@@ -48,7 +48,7 @@ export default function UploadPage() {
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, amountUsd: amount, daysUntilDue: days }),
+        body: JSON.stringify({ clientName, amountUsd: amount, daysUntilDue: days, invoiceHash: hash }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

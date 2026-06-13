@@ -3,7 +3,12 @@ import { getStore } from '@/lib/store';
 import { randomUUID } from 'crypto';
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
 
   // Minimal validation — for MVP
   if (!body.clientName || !body.amountUsd || !body.daysUntilDue) {
@@ -42,6 +47,7 @@ export async function POST(req: NextRequest) {
     status: 'pending_auction' as const,
     investors: [],
     clientName: body.clientName,  // extra field for display
+    invoiceHash: body.invoiceHash ?? null,  // SHA-256 file hash (HCS double-spend; commit 4 submits/checks it)
     createdAt: new Date().toISOString(),
   };
 
