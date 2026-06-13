@@ -1,114 +1,104 @@
-// Circle Agent / Developer-Controlled Wallets — ISOLATED sponsor-candidate module,
-// NOT wired in. Built per docs/CIRCLE_AGENT_RECON.md.
+// Circle Developer-Controlled (Agent) Wallets — server-side. An autonomous "fiduciary
+// agent" holds USDC in a Circle-managed wallet on Arc and signs transfers via Circle's
+// API (Circle signs with the managed key; we never hold a private key). Arc testnet is
+// supported (ARC-TESTNET). See docs/CIRCLE_AGENT_RECON.md + ADR-021.
 //
-// An autonomous "fiduciary agent" holds USDC in a Circle-managed wallet with policy
-// controls (spending caps) and signs distribution transactions server-side via Circle's
-// API. Arc testnet IS supported (ARC-TESTNET).
-//
-// USER-REQUIRED to go live: a SEPARATE Circle Developer Console signup → CIRCLE_AGENT_API_KEY
-// + a generated+registered CIRCLE_AGENT_ENTITY_SECRET. Our Arc RPC creds are NOT sufficient.
-// Also: `pnpm add @circle-fin/developer-controlled-wallets` (deliberately NOT in package.json
-// yet — it's a heavy dep we shouldn't ship unused; this module imports it lazily so the rest
-// of the app builds without it).
+// Requires CIRCLE_AGENT_API_KEY + a registered CIRCLE_AGENT_ENTITY_SECRET. When those are
+// absent the helpers throw a clear error; callers gate on isCircleConfigured() so the
+// existing spine never breaks (graceful degradation, like the World ID demo bypass).
 import { withRetry } from './retry';
+import {
+  initiateDeveloperControlledWalletsClient,
+  type CircleDeveloperControlledWalletsClient,
+} from '@circle-fin/developer-controlled-wallets';
 
-const ARC_BLOCKCHAIN = 'ARC-TESTNET'; // confirm vs developers.circle.com/wallets/account-types
+const ARC_BLOCKCHAIN = 'ARC-TESTNET'; // confirmed enum value (Blockchain.ArcTestnet)
 
 export interface SpendingPolicy {
-  // e.g. { maxAmount: '10000', period: 'daily', token: 'USDC' }
+  // Illustrative cap recorded alongside the wallet. Circle's enforced spending limits
+  // are configured via the Console/Agent-policy layer; we record intent here and note it.
   maxAmount: string;
   period?: 'transaction' | 'daily' | 'weekly' | 'monthly';
   token?: string;
 }
 
-export interface AgentTransaction {
-  destination: string;
-  amount: string;
-  tokenId: string;
+export interface AgentTransfer {
+  destinationAddress: string;
+  amount: string; // human-readable units (e.g. "0.01")
+  tokenId: string; // Circle token id for USDC on Arc
 }
 
-function requireCreds(): { apiKey: string; entitySecret: string } {
-  const apiKey = process.env.CIRCLE_AGENT_API_KEY;
-  const entitySecret = process.env.CIRCLE_AGENT_ENTITY_SECRET;
-  if (!apiKey || !entitySecret) {
+// True when Circle creds are present. Callers use this to decide whether to route
+// through Circle or fall back to the existing operator-key path (ADR-013).
+export function isCircleConfigured(): boolean {
+  return !!(process.env.CIRCLE_AGENT_API_KEY && process.env.CIRCLE_AGENT_ENTITY_SECRET);
+}
+
+let _client: CircleDeveloperControlledWalletsClient | null = null;
+function getClient(): CircleDeveloperControlledWalletsClient {
+  if (!isCircleConfigured()) {
     throw new Error(
-      'Missing CIRCLE_AGENT_API_KEY / CIRCLE_AGENT_ENTITY_SECRET. Sign up at console.circle.com, ' +
-        'create an API key + register an entity secret (see docs/CIRCLE_AGENT_RECON.md).'
+      'Missing CIRCLE_AGENT_API_KEY / CIRCLE_AGENT_ENTITY_SECRET. Sign up at console.circle.com ' +
+        '+ register an entity secret (see docs/CIRCLE_AGENT_RECON.md).'
     );
   }
-  return { apiKey, entitySecret };
-}
-
-// Lazily construct the Circle client so the app builds without the SDK installed.
-// Throws a clear error if the SDK isn't present or creds are missing.
-async function getClient(): Promise<any> {
-  const { apiKey, entitySecret } = requireCreds();
-  let mod: any;
-  try {
-    // The SDK is intentionally NOT in package.json (heavy, unused until the user wires Circle
-    // in). A variable specifier keeps TS from resolving the (absent) module type at compile
-    // time; the import resolves at runtime once the user installs it.
-    const pkg = '@circle-fin/developer-controlled-wallets';
-    mod = await import(/* webpackIgnore: true */ pkg);
-  } catch {
-    throw new Error(
-      "@circle-fin/developer-controlled-wallets is not installed. Run " +
-        "`pnpm add @circle-fin/developer-controlled-wallets` in packages/frontend."
-    );
+  if (!_client) {
+    _client = initiateDeveloperControlledWalletsClient({
+      apiKey: process.env.CIRCLE_AGENT_API_KEY!,
+      entitySecret: process.env.CIRCLE_AGENT_ENTITY_SECRET!,
+    });
   }
-  return mod.initiateDeveloperControlledWalletsClient({ apiKey, entitySecret });
+  return _client;
 }
 
-// Provision a fresh developer-controlled wallet for an agent on Arc testnet.
-// Creates a wallet set then one EOA wallet inside it; returns the wallet id + address.
+// Provision a fresh Circle wallet for an agent on Arc testnet: create a wallet set,
+// then one EOA wallet inside it. Returns the wallet id + on-chain address.
 export async function provisionAgentWallet(
   agentName: string
 ): Promise<{ walletId: string; address: string }> {
   return withRetry(async () => {
-    const client = await getClient();
+    const client = getClient();
     const setRes = await client.createWalletSet({ name: `fiduciary-${agentName}` });
-    const walletSetId = setRes.data.walletSet.id;
+    const walletSetId = setRes.data!.walletSet.id;
     const walletsRes = await client.createWallets({
-      walletSetId,
-      blockchains: [ARC_BLOCKCHAIN],
+      blockchains: [ARC_BLOCKCHAIN as any],
       count: 1,
-      accountType: 'EOA',
+      walletSetId,
     });
-    const w = walletsRes.data.wallets[0];
+    const w = walletsRes.data!.wallets[0];
     return { walletId: w.id, address: w.address };
   });
 }
 
-// Attach a spending policy (cap) to a wallet. Policy controls are part of Circle's
-// wallet/agent layer; the exact API surface may be CLI- vs API-exposed (recon uncertainty),
-// so this is written against the documented transaction-policy shape and may need adjusting.
+// Record a spending policy for the wallet. Circle's enforced caps live in the Console /
+// Agent-policy layer (recon flags this surface as not-fully-API-exposed); we validate the
+// client + record the intent so the integration is honest about what's enforced where.
 export async function setSpendingPolicy(
   walletId: string,
   policy: SpendingPolicy
-): Promise<{ walletId: string; policy: SpendingPolicy }> {
-  // NOTE: Circle's spending-limit configuration is surfaced through the Agent Stack /
-  // transaction-policy APIs (recon flags mild uncertainty on the exact raw-API path).
-  // Validate creds + SDK presence so the failure mode is a clear error, not a silent no-op.
-  await getClient();
-  // TODO(verify): wire to Circle's actual policy endpoint once the exact surface is confirmed.
-  return { walletId, policy };
+): Promise<{ walletId: string; policy: SpendingPolicy; enforced: boolean }> {
+  getClient(); // validate creds/SDK so a misconfig surfaces here, not silently
+  // TODO(verify): wire to Circle's transaction-policy endpoint once confirmed on the API.
+  return { walletId, policy, enforced: false };
 }
 
-// Sign + submit a transaction from the agent's wallet. Circle signs with the managed key
-// server-side; the SDK generates the per-request entitySecretCiphertext + idempotencyKey.
-// Async on Circle's side — caller polls getTransaction if it needs terminal status.
+// Initiate a USDC transfer from the agent's Circle wallet. Circle signs server-side with
+// the managed key; the SDK supplies entitySecretCiphertext + idempotencyKey per request.
+// Async on Circle's side — returns the transaction id; poll getTransaction for terminal state.
 export async function signTransaction(
   walletId: string,
-  tx: AgentTransaction
+  tx: AgentTransfer
 ): Promise<{ transactionId: string }> {
   return withRetry(async () => {
-    const client = await getClient();
+    const client = getClient();
     const res = await client.createTransaction({
       walletId,
-      blockchain: ARC_BLOCKCHAIN,
-      operation: { type: 'TRANSFER', destination: tx.destination, amount: tx.amount, tokenId: tx.tokenId },
-      // SDK fills entitySecretCiphertext from the init entitySecret + an idempotencyKey.
+      tokenId: tx.tokenId,
+      destinationAddress: tx.destinationAddress,
+      amount: [tx.amount],
+      fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
     });
-    return { transactionId: res.data.id };
+    const id = (res.data as any)?.id ?? (res.data as any)?.transaction?.id;
+    return { transactionId: id };
   });
 }

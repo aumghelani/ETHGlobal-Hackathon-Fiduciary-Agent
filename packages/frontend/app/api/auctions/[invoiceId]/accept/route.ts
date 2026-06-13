@@ -8,6 +8,7 @@ import {
 } from '@fiduciary/hedera';
 import { deployPool } from '@/lib/arc';
 import { withRetry } from '@/lib/retry';
+import { isCircleConfigured, provisionAgentWallet, setSpendingPolicy } from '@/lib/circleAgentWallet';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = getStore();
@@ -40,11 +41,20 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   }
 
   // Fully done (token minted, pool deployed, investors associated) → idempotent fast-path.
-  if ((invoice as any).tokenId && (invoice as any).poolAddress && (invoice as any).investorsAssociated) {
+  // Don't short-circuit if Circle is configured but the agent wallet wasn't provisioned
+  // yet — let the flow fall through to the (idempotent, best-effort) provisioning block.
+  const agentWalletPending = isCircleConfigured() && !(invoice as any).agentWalletId;
+  if (
+    (invoice as any).tokenId &&
+    (invoice as any).poolAddress &&
+    (invoice as any).investorsAssociated &&
+    !agentWalletPending
+  ) {
     return NextResponse.json({
       tokenId: (invoice as any).tokenId,
       hashscanUrl: `https://hashscan.io/testnet/token/${(invoice as any).tokenId}`,
       poolAddress: (invoice as any).poolAddress,
+      agentWalletAddress: (invoice as any).agentWalletAddress ?? null,
       fromCache: true,
     });
   }
@@ -129,6 +139,28 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     store.invoices.set(params.invoiceId, invoice);
   }
 
+  // Provision a Circle Agent Wallet for the winning agent on Arc + record a spending
+  // policy (ADR-021). BEST-EFFORT + NON-BLOCKING: only when Circle is configured, and a
+  // failure NEVER blocks accept — the verified spine (mint/pool/associate) is already
+  // done, and settlement falls back to the operator key if no agent wallet exists.
+  if (isCircleConfigured() && !(invoice as any).agentWalletId) {
+    try {
+      const wallet = await provisionAgentWallet(agentName);
+      await setSpendingPolicy(wallet.walletId, { maxAmount: '10000', period: 'daily', token: 'USDC' });
+      (invoice as any).agentWalletId = wallet.walletId;
+      (invoice as any).agentWalletAddress = wallet.address;
+      store.invoices.set(params.invoiceId, invoice);
+    } catch (err) {
+      console.error('[accept] Circle agent wallet provisioning failed (non-fatal):', err);
+    }
+  }
+
   const hashscanUrl = `https://hashscan.io/testnet/token/${tokenId}`;
-  return NextResponse.json({ tokenId, hashscanUrl, poolAddress, fromCache: false });
+  return NextResponse.json({
+    tokenId,
+    hashscanUrl,
+    poolAddress,
+    agentWalletAddress: (invoice as any).agentWalletAddress ?? null,
+    fromCache: false,
+  });
 }

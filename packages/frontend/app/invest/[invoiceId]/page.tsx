@@ -6,6 +6,7 @@ import { CheckCircle2, X, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { HcsAuditLink } from '@/components/HcsAuditLink';
+import { AgentWalletLink } from '@/components/AgentWalletLink';
 
 type InvestData = {
   clientName: string;
@@ -24,6 +25,7 @@ type InvestData = {
   investorsReceivedUsd: number;
   hcsSequenceNumber: number | null;
   hcsTopicId: string | null;
+  agentWalletAddress: string | null;
 };
 
 export default function InvestInvoicePage() {
@@ -125,6 +127,7 @@ export default function InvestInvoicePage() {
         </div>
 
         <HcsAuditLink seq={data.hcsSequenceNumber} topicId={data.hcsTopicId} />
+        <AgentWalletLink address={data.agentWalletAddress} className="mt-2 text-center text-xs text-slate-400" />
       </div>
     );
   }
@@ -253,6 +256,7 @@ export default function InvestInvoicePage() {
       )}
 
       <HcsAuditLink seq={data.hcsSequenceNumber} topicId={data.hcsTopicId} />
+      <AgentWalletLink address={data.agentWalletAddress} />
     </div>
   );
 }

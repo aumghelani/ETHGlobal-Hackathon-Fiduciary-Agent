@@ -64,5 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     // HashScan attribution link on the landing page.
     hcsSequenceNumber: (invoice as any).hcsSequenceNumber ?? null,
     hcsTopicId: process.env.HEDERA_HCS_TOPIC_ID ?? null,
+    // The agent's Circle-managed wallet on Arc (null if Circle isn't configured).
+    agentWalletAddress: (invoice as any).agentWalletAddress ?? null,
   });
 }

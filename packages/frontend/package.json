@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.6.0",
     "@radix-ui/react-label": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.0",
     "@unlink-xyz/sdk": "0.3.0-canary.598",

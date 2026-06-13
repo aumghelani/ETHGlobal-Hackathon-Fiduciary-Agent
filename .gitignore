@@ -84,6 +84,12 @@ tmp/
 secrets.json
 operator-key.txt
 private-key.txt
+# Circle entity-secret recovery file (recovers the signing secret — never commit)
+circle-entity-secret-recovery.dat
+*-recovery.dat
+*recovery*.dat
+recovery_file_*.dat
+*.dat
 
 # ============================================
 # DEPLOYMENTS
