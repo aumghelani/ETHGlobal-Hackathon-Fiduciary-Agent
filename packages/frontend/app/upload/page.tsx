@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { IDKitWidget, VerificationLevel, type ISuccessResult } from "@worldcoin/idkit";
+import { IDKitRequestWidget, proofOfHuman, type IDKitResult, type RpContext } from "@worldcoin/idkit";
 import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +10,15 @@ import { Button } from "@/components/ui/button";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { hashFile } from "@/lib/hash";
 
-// World ID config comes from the public env (the widget runs in the browser). When the
-// App ID is absent we degrade gracefully — the gate is bypassed with a visible note.
+// World ID 4.0 config. The App ID is public (browser). The rp_context (with the secret
+// signature) is fetched from /api/worldid/context at verify time — never exposed here.
+// When the App ID is absent we degrade gracefully (gate bypassed with a visible note).
 const WLD_APP_ID = process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}` | undefined;
 const WLD_ACTION = process.env.NEXT_PUBLIC_WLD_ACTION ?? "factor-invoice";
-const WORLD_ID_ENABLED = !!WLD_APP_ID;
+// Demo escape hatch (default OFF): when true, skip the World ID step so the full flow
+// can be demoed without a real World ID account. Must mirror the server's DEMO_BYPASS_WORLDID.
+const DEMO_BYPASS = process.env.NEXT_PUBLIC_DEMO_BYPASS_WORLDID === "true";
+const WORLD_ID_ENABLED = !!WLD_APP_ID && !DEMO_BYPASS;
 
 export default function UploadPage() {
   const router = useRouter();
@@ -24,9 +28,34 @@ export default function UploadPage() {
   const [daysUntilDue, setDaysUntilDue] = useState("60");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  // The verified World ID proof (null until the user completes verification). When
-  // World ID is disabled (no App ID), this stays null and the gate is bypassed.
-  const [worldIdProof, setWorldIdProof] = useState<ISuccessResult | null>(null);
+  // The verified World ID v4 result (null until verification completes). Degrades to
+  // null when World ID is disabled (gate bypassed).
+  const [worldIdResult, setWorldIdResult] = useState<IDKitResult | null>(null);
+  // v4 widget control + the server-signed rp_context it needs.
+  const [widgetOpen, setWidgetOpen] = useState(false);
+  const [rpContext, setRpContext] = useState<RpContext | null>(null);
+  const [preparing, setPreparing] = useState(false);
+
+  // Fetch a fresh server-signed rp_context, then open the widget. Keeps the signing
+  // key server-side (the route signs; we only receive the public context).
+  async function startVerification() {
+    setError("");
+    setPreparing(true);
+    try {
+      const res = await fetch("/api/worldid/context");
+      if (!res.ok) {
+        setError("Verification is unavailable right now. Please try again.");
+        return;
+      }
+      const { rp_context } = await res.json();
+      setRpContext(rp_context as RpContext);
+      setWidgetOpen(true);
+    } catch {
+      setError("Verification is unavailable right now. Please try again.");
+    } finally {
+      setPreparing(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +79,7 @@ export default function UploadPage() {
       setError("Days until payment must be greater than zero.");
       return;
     }
-    if (WORLD_ID_ENABLED && !worldIdProof) {
+    if (WORLD_ID_ENABLED && !worldIdResult) {
       setError("Please verify you're a real person first.");
       return;
     }
@@ -60,17 +89,8 @@ export default function UploadPage() {
       const hash = await hashFile(file);
       console.log("Invoice hash:", hash);
 
-      // Map IDKit's snake_case proof to the API's camelCase shape (lib/worldid.ts).
-      const proofPayload = worldIdProof
-        ? {
-            proof: worldIdProof.proof,
-            nullifierHash: worldIdProof.nullifier_hash,
-            merkleRoot: worldIdProof.merkle_root,
-            verificationLevel: worldIdProof.verification_level,
-            action: WLD_ACTION,
-          }
-        : undefined;
-
+      // v4: forward the IDKit result payload AS-IS — the backend relays it to the
+      // Developer Portal verify endpoint without remapping.
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,7 +99,7 @@ export default function UploadPage() {
           amountUsd: amount,
           daysUntilDue: days,
           invoiceHash: hash,
-          worldIdProof: proofPayload,
+          worldIdResult: worldIdResult ?? undefined,
         }),
       });
       if (!res.ok) {
@@ -163,28 +183,47 @@ export default function UploadPage() {
           </div>
         </div>
 
-        {/* World ID human-verification step. Shown only when an App ID is configured;
+        {/* World ID 4.0 human-verification step. Shown only when an App ID is configured;
             otherwise we degrade gracefully with a subtle note (demo never breaks). */}
         {WORLD_ID_ENABLED ? (
-          worldIdProof ? (
+          worldIdResult ? (
             <div className="flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
               <CheckCircle2 size={16} className="text-emerald-500" />
               Verified as a real person
             </div>
           ) : (
-            <IDKitWidget
-              app_id={WLD_APP_ID!}
-              action={WLD_ACTION}
-              verification_level={VerificationLevel.Device}
-              onSuccess={(proof: ISuccessResult) => setWorldIdProof(proof)}
-            >
-              {({ open }: { open: () => void }) => (
-                <Button type="button" variant="outline" size="lg" className="w-full" onClick={open}>
-                  Verify you&apos;re a real person
-                </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={startVerification}
+                disabled={preparing}
+              >
+                {preparing ? "Preparing…" : "Verify you're a real person"}
+              </Button>
+              {rpContext && (
+                <IDKitRequestWidget
+                  open={widgetOpen}
+                  onOpenChange={setWidgetOpen}
+                  app_id={WLD_APP_ID!}
+                  action={WLD_ACTION}
+                  rp_context={rpContext}
+                  allow_legacy_proofs={true}
+                  preset={proofOfHuman()}
+                  onSuccess={(result: IDKitResult) => {
+                    setWorldIdResult(result);
+                    setWidgetOpen(false);
+                  }}
+                />
               )}
-            </IDKitWidget>
+            </>
           )
+        ) : DEMO_BYPASS && WLD_APP_ID ? (
+          <p className="text-center text-xs text-amber-500">
+            Demo mode — World ID verification bypassed.
+          </p>
         ) : (
           <p className="text-center text-xs text-slate-400">
             Identity verification runs in production.
@@ -195,7 +234,7 @@ export default function UploadPage() {
           type="submit"
           size="lg"
           className="w-full"
-          disabled={isSubmitting || (WORLD_ID_ENABLED && !worldIdProof)}
+          disabled={isSubmitting || (WORLD_ID_ENABLED && !worldIdResult)}
         >
           {isSubmitting ? "Finding offers..." : "Get offers"}
         </Button>

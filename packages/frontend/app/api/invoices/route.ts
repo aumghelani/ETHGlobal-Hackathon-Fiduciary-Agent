@@ -20,26 +20,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // World ID identity gate (THREAT_MODEL Layer 1 — Sybil resistance on the supply side).
-  // ONLY enforced when WORLDID_APP_ID is configured. Without it we degrade gracefully
-  // (demo mode) so the flow never breaks before the App ID exists. When configured, a
-  // valid proof-of-personhood is REQUIRED to create an invoice.
-  if (process.env.WORLDID_APP_ID) {
-    const p = body.worldIdProof;
-    if (!p?.proof || !p?.nullifierHash || !p?.merkleRoot || !p?.verificationLevel) {
+  // World ID 4.0 identity gate (THREAT_MODEL Layer 1 — Sybil resistance on the supply
+  // side). ONLY enforced when WORLDID_RP_ID is configured. Without it we degrade
+  // gracefully (demo mode) so the flow never breaks. When configured, a valid v4
+  // proof-of-personhood is REQUIRED to create an invoice; the result is forwarded as-is.
+  //
+  // DEMO_BYPASS_WORLDID=true skips the proof check so the full upload→auction flow can be
+  // demoed WITHOUT a real World ID account (generating a genuine proof needs the World App
+  // + Orb). The integration stays real for anyone who CAN verify; this is an explicit,
+  // opt-in demo escape hatch (default OFF). Logged loudly so it's never a silent bypass.
+  const bypassWorldId = process.env.DEMO_BYPASS_WORLDID === 'true';
+  if (bypassWorldId && process.env.WORLDID_RP_ID) {
+    console.warn('[invoices] ⚠️  DEMO_BYPASS_WORLDID active — World ID proof check SKIPPED.');
+  }
+  if (process.env.WORLDID_RP_ID && !bypassWorldId) {
+    const r = body.worldIdResult;
+    if (!r?.responses?.length && !r?.protocol_version) {
       return NextResponse.json(
         { error: 'Identity verification required. Please verify with World ID and try again.' },
         { status: 403 }
       );
     }
     try {
-      const result = await verifyProof({
-        proof: p.proof,
-        nullifierHash: p.nullifierHash,
-        merkleRoot: p.merkleRoot,
-        verificationLevel: p.verificationLevel,
-        action: p.action,
-      });
+      const result = await verifyProof(r);
       if (!result.success) {
         return NextResponse.json(
           { error: 'Identity verification failed. Please verify with World ID and try again.' },
