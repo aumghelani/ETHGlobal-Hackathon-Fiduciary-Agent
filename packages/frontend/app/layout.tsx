@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-screen bg-bg font-sans text-fg antialiased">
+      <body className="min-h-screen overflow-x-hidden bg-bg font-sans text-fg antialiased">
         <UIProvider>
           <NavBar />
           <main className="mx-auto max-w-6xl px-5 py-10 sm:px-6">{children}</main>
