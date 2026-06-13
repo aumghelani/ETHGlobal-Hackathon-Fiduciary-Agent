@@ -13,6 +13,10 @@ type InvestData = {
   agentName: string | null;
   feePercent: number | null;
   pool: { raised: number; target: number; remaining: number; funded: boolean };
+  privateRaisedUsd: number;
+  displayedTotalUsd: number;
+  publicInvestorCount: number;
+  privateInvestorCount: number;
 };
 
 export default function InvestInvoicePage() {
@@ -81,10 +85,9 @@ export default function InvestInvoicePage() {
   if (!data) return null;
 
   const net = data.netToFreelancer ?? data.amountUsd;
-  // Map the on-chain pool (small USDC) back to Maria's full dollar net for display.
-  const fraction = data.pool.target > 0 ? data.pool.raised / data.pool.target : 0;
-  const fundedDollars = Math.round(net * fraction);
-  const percent = Math.min(100, Math.round(fraction * 100));
+  // Combined total = public (mapped from pool) + private (from store), in dollars.
+  const fundedDollars = Math.round(data.displayedTotalUsd);
+  const percent = net > 0 ? Math.min(100, Math.round((data.displayedTotalUsd / net) * 100)) : 0;
 
   return (
     <div className="mx-auto max-w-md">
@@ -129,6 +132,13 @@ export default function InvestInvoicePage() {
             style={{ width: `${percent}%` }}
           />
         </div>
+        {(data.publicInvestorCount > 0 || data.privateInvestorCount > 0) && (
+          <p className="mt-2 text-xs text-slate-400">
+            {data.publicInvestorCount} public investor
+            {data.publicInvestorCount === 1 ? '' : 's'} · {data.privateInvestorCount} private investor
+            {data.privateInvestorCount === 1 ? '' : 's'}
+          </p>
+        )}
         {data.pool.funded && (
           <p className="mt-2 text-sm font-medium text-emerald-700">
             Fully funded — the freelancer has been paid.
