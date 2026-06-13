@@ -2,20 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Fiduciary design tokens — semantic, theme-aware (light + dark mode 2.0).
+   Components reference these via Tailwind's bg-surface / text-fg / border-line
+   etc., so a single theme switch reskins the whole app.
+   ============================================================================ */
 :root {
-  --primary: #10b981;
-  --accent: #6366f1;
-  --warning: #f59e0b;
-  --background: #fafafa;
+  /* Brand */
+  --brand: 16 185 129;          /* emerald-500  #10B981 */
+  --brand-strong: 5 150 105;    /* emerald-600 */
+  --brand-soft: 209 250 229;    /* emerald-100 */
+  --accent: 99 102 241;         /* indigo-500  #6366F1 */
+  --accent-soft: 224 231 255;   /* indigo-100 */
+  --warn: 245 158 11;           /* amber-500 */
+  --warn-soft: 254 243 199;     /* amber-100 */
+  --danger: 220 38 38;          /* red-600 */
+
+  /* Surfaces (light) — layered, not flat */
+  --bg: 250 250 249;            /* page background, warm off-white */
+  --surface: 255 255 255;       /* primary card */
+  --surface-2: 248 250 252;     /* nested / subtle fill */
+  --surface-3: 241 245 249;     /* deeper fill */
+  --line: 226 232 240;          /* borders */
+  --line-strong: 203 213 225;
+
+  /* Text */
+  --fg: 15 23 42;              /* slate-900 */
+  --fg-muted: 71 85 105;       /* slate-600 */
+  --fg-subtle: 148 163 184;    /* slate-400 */
+  --on-brand: 255 255 255;
+
+  /* Effects */
+  --radius: 14px;              /* bento corner rounding (12-24px range) */
+  --radius-sm: 10px;
+  --radius-lg: 22px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.06), 0 2px 4px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.10), 0 4px 8px rgb(15 23 42 / 0.04);
+  --ring: 16 185 129;
+}
+
+.dark {
+  /* Surfaces (dark mode 2.0) — deep slate with real elevation, never pure black */
+  --bg: 9 11 17;
+  --surface: 17 21 31;
+  --surface-2: 23 28 41;
+  --surface-3: 31 38 54;
+  --line: 38 46 64;
+  --line-strong: 51 62 84;
+
+  --fg: 241 245 249;
+  --fg-muted: 161 173 191;
+  --fg-subtle: 100 116 139;
+  --on-brand: 255 255 255;
+
+  --brand-soft: 6 78 59;       /* emerald-900-ish for soft fills */
+  --accent-soft: 30 27 75;     /* indigo-950 */
+  --warn-soft: 69 50 8;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px rgb(0 0 0 / 0.40);
+  --shadow-md: 0 4px 14px rgb(0 0 0 / 0.35), 0 2px 6px rgb(0 0 0 / 0.30);
+  --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.50), 0 6px 12px rgb(0 0 0 / 0.40);
+}
+
+* {
+  border-color: rgb(var(--line));
 }
 
 body {
-  background-color: var(--background);
-  color: #0f172a;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Tabular numerals for money — keeps figures aligned as they animate */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ============================================================================
+   Motion — calm, tactile. Respect reduced-motion.
+   ============================================================================ */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.bid-reveal { animation: fadeInUp 400ms ease-out; }
+.bid-reveal { animation: fadeInUp 450ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--surface-2)) 25%,
+    rgb(var(--surface-3)) 37%,
+    rgb(var(--surface-2)) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Subtle grid texture for hero / empty surfaces */
+.grid-texture {
+  background-image:
+    linear-gradient(rgb(var(--line) / 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--line) / 0.5) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
