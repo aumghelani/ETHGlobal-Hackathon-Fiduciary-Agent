@@ -2,12 +2,39 @@ import {
   TransferTransaction,
   ScheduleCreateTransaction,
   ScheduleSignTransaction,
+  TokenAssociateTransaction,
   PrivateKey,
   PublicKey,
   Hbar,
   HbarUnit,
 } from "@hashgraph/sdk";
 import { getClient } from "./client.js";
+
+// Associate an HTS token with a recipient account so it can receive transfers.
+// Tolerant of a re-run: an already-associated token throws and is ignored.
+export async function associateToken(
+  tokenId: string,
+  accountId: string,
+  key: PrivateKey
+): Promise<void> {
+  const client = getClient();
+  try {
+    const tx = await new TokenAssociateTransaction()
+      .setAccountId(accountId)
+      .setTokenIds([tokenId])
+      .freezeWith(client)
+      .sign(key);
+    await (await tx.execute(client)).getReceipt(client);
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT")
+    ) {
+      return; // idempotent — already associated
+    }
+    throw err;
+  }
+}
 
 export interface ScheduleDistributionParams {
   tokenId: string;
