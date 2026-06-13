@@ -49,7 +49,7 @@ export function BidCard({
           <p className="mt-3 text-sm text-slate-500">Analyzing invoice...</p>
         </div>
       ) : (
-        <div className="mt-4">
+        <div className="bid-reveal mt-4">
           <div className="text-4xl font-bold text-slate-900">
             ${bid.netToFreelancer.toLocaleString()}
           </div>

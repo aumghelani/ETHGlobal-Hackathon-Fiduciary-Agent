@@ -22,7 +22,15 @@ export default function AuctionPage() {
         if (!res.ok) throw new Error('Auction failed to start');
         const data = await res.json();
         if (!cancelled) {
-          setBids(data.bids);
+          // Stagger reveal — veteran first, newbie 600ms later
+          if (data.bids.length === 1) {
+            setBids(data.bids);
+          } else if (data.bids.length > 1) {
+            setBids([data.bids[0]]);
+            setTimeout(() => {
+              if (!cancelled) setBids(data.bids);
+            }, 600);
+          }
           setLoading(false);
         }
       } catch (e: any) {
