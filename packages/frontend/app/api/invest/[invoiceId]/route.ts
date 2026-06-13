@@ -59,5 +59,10 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     privateInvestorCount,
     agentEarnedUsd,
     investorsReceivedUsd,
+    // HCS audit attestation (THREAT_MODEL Layer 3) — null if the hash submit failed.
+    // The topic ID is a public on-chain identifier (safe to expose) used to build the
+    // HashScan attribution link on the landing page.
+    hcsSequenceNumber: (invoice as any).hcsSequenceNumber ?? null,
+    hcsTopicId: process.env.HEDERA_HCS_TOPIC_ID ?? null,
   });
 }
