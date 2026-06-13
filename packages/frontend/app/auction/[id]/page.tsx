@@ -168,6 +168,9 @@ export default function AuctionPage() {
             <CheckCircle size={13} className="text-emerald-400" />
             This invoice is committed to the audit log.
           </p>
+          <p className="max-w-md text-center text-xs text-slate-400">
+            The agent you accept tokenizes your invoice on Hedera and sets its fee at the protocol level.
+          </p>
           <HcsAuditLink seq={hcs.seq} topicId={hcs.topicId} className="text-xs text-slate-400" />
         </div>
       )}

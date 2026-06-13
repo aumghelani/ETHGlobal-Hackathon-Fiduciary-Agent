@@ -229,7 +229,8 @@ export default function InvestInvoicePage() {
           </button>
           {isPrivate && (
             <p className="text-xs text-emerald-700">
-              Your position stays sealed from other investors.
+              Your position stays sealed from other investors.{' '}
+              <span className="text-emerald-700/60">Privacy by Unlink.</span>
             </p>
           )}
 
