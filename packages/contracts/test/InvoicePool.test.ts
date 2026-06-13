@@ -25,7 +25,16 @@ async function deployFixture() {
   );
   await pool.waitForDeployment();
 
-  return { usdc, pool, freelancer, agent, inv1, inv2, inv3, client };
+  return {
+    usdc: usdc as any,
+    pool: pool as any,
+    freelancer,
+    agent,
+    inv1,
+    inv2,
+    inv3,
+    client,
+  };
 }
 
 async function fundInvestor(usdc: any, pool: any, investor: any, amount: bigint) {

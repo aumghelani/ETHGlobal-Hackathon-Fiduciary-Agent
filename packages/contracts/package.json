@@ -5,7 +5,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy:arc": "hardhat run scripts/deploy.ts --network arcTestnet"
+    "deploy:arc": "hardhat run scripts/deploy.ts --network arcTestnet",
+    "deploy:pool": "hardhat run scripts/deploy-pool.ts --network arcTestnet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
