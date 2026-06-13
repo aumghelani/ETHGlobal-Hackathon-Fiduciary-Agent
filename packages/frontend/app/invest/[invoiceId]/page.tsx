@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -25,6 +25,7 @@ export default function InvestInvoicePage() {
   const [share, setShare] = useState('');
   const [funding, setFunding] = useState(false);
   const [error, setError] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [showBanner, setShowBanner] = useState(searchParams.get('from') === 'accept');
 
   async function refresh() {
@@ -50,7 +51,10 @@ export default function InvestInvoicePage() {
     }
     setFunding(true);
     try {
-      const res = await fetch(`/api/invest/${invoiceId}/fund`, {
+      const endpoint = isPrivate
+        ? `/api/invest/${invoiceId}/fund-private`
+        : `/api/invest/${invoiceId}/fund`;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amountUsd: amount }),
@@ -60,7 +64,9 @@ export default function InvestInvoicePage() {
         setError(result.error ?? 'Could not fund this invoice. Please try again.');
         return;
       }
-      setData((prev) => (prev ? { ...prev, pool: result.pool } : prev));
+      // Public returns pool state; private returns combined totals — refresh to get
+      // the unified picture either way.
+      await refresh();
       setShare('');
     } catch (e: any) {
       setError(e.message);
@@ -132,6 +138,40 @@ export default function InvestInvoicePage() {
 
       {!data.pool.funded && (
         <form className="mt-6 space-y-3" onSubmit={handleFund}>
+          <button
+            type="button"
+            onClick={() => setIsPrivate((v) => !v)}
+            className={
+              'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ' +
+              (isPrivate
+                ? 'border-emerald-500 bg-emerald-50'
+                : 'border-slate-200 bg-white')
+            }
+          >
+            <span className="flex items-center gap-2 text-sm font-medium text-slate-800">
+              <Lock size={14} className={isPrivate ? 'text-emerald-600' : 'text-slate-400'} />
+              Buy privately
+            </span>
+            <span
+              className={
+                'relative h-5 w-9 rounded-full transition-colors ' +
+                (isPrivate ? 'bg-emerald-500' : 'bg-slate-300')
+              }
+            >
+              <span
+                className={
+                  'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ' +
+                  (isPrivate ? 'left-[18px]' : 'left-0.5')
+                }
+              />
+            </span>
+          </button>
+          {isPrivate && (
+            <p className="text-xs text-emerald-700">
+              Your position stays sealed from other investors.
+            </p>
+          )}
+
           <label className="text-sm font-medium text-slate-700">Your share (in dollars)</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
