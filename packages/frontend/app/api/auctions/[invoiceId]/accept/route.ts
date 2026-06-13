@@ -91,8 +91,12 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   if (!poolAddress) {
     const targetUsdc = Number(process.env.DEMO_POOL_TARGET_USDC ?? '10');
     const feeBps = Math.round(winningBid.feePercent * 100);
+    // clientPaymentAmount must be faucet-feasible (settle pulls it from the operator
+    // = the symbolic "client"). Keep it just above target; the UI narrates the
+    // symbolic $5,000, the on-chain amount is small. Dollars/USDC dual-denomination.
+    const clientPaymentUsdc = targetUsdc + 1;
     try {
-      poolAddress = await deployPool(targetUsdc, 5000, feeBps);
+      poolAddress = await deployPool(targetUsdc, clientPaymentUsdc, feeBps);
     } catch {
       return NextResponse.json(
         { error: 'Could not secure the offer. Please try again.' },
