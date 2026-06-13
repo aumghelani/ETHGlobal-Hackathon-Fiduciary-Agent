@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@fiduciary/agents"],
+  transpilePackages: ["@fiduciary/agents", "@fiduciary/hedera"],
   webpack: (config) => {
     // The agents package uses NodeNext-style ".js" extension imports in its TS
     // source; map them back to .ts/.tsx so Next's bundler can resolve them.

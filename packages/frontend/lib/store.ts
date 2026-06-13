@@ -1,10 +1,10 @@
-import type { Invoice, Agent, Bid, Investor } from '@fiduciary/agents';
+import type { Invoice, Agent, Bid } from '@fiduciary/agents';
 
 type Store = {
   invoices: Map<string, Invoice & {
     status: 'pending_auction' | 'funding' | 'funded' | 'settled';
     acceptedBid?: Bid;
-    investors: Investor[];
+    investors: any[];
   }>;
   bids: Map<string, Bid[]>;  // invoiceId -> bids
   agents: Map<string, Agent>;

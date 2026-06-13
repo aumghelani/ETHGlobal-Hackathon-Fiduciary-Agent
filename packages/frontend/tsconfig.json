@@ -15,7 +15,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
-      "@fiduciary/agents": ["../agents/src/index.ts"]
+      "@fiduciary/agents": ["../agents/src/index.ts"],
+      "@fiduciary/hedera": ["../hedera/src/index.ts"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
