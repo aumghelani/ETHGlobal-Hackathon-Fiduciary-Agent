@@ -80,11 +80,8 @@ fiduciary/
 │   ├── agents/        # AI agent logic
 │   ├── backend/       # API server
 │   └── frontend/      # Next.js UI
-├── scripts/           # Deploy + demo scripts
-└── docs/              # Architecture, design, demo script
+└── scripts/           # Deploy + demo scripts
 ```
-
-See `docs/ARCHITECTURE.md` for details.
 
 ---
 
