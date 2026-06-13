@@ -3,7 +3,6 @@ import { getStore } from '@/lib/store';
 import {
   getClient,
   mintInvoiceToken,
-  scheduleDistribution,
   associateToken,
   PrivateKey,
 } from '@fiduciary/hedera';
@@ -40,13 +39,12 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
-  // Fully done (token minted, pool deployed, schedule created) → idempotent fast-path.
-  if ((invoice as any).tokenId && (invoice as any).poolAddress && (invoice as any).scheduleId) {
+  // Fully done (token minted, pool deployed, investors associated) → idempotent fast-path.
+  if ((invoice as any).tokenId && (invoice as any).poolAddress && (invoice as any).investorsAssociated) {
     return NextResponse.json({
       tokenId: (invoice as any).tokenId,
       hashscanUrl: `https://hashscan.io/testnet/token/${(invoice as any).tokenId}`,
       poolAddress: (invoice as any).poolAddress,
-      scheduleId: (invoice as any).scheduleId,
       fromCache: true,
     });
   }
@@ -107,48 +105,30 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     store.invoices.set(params.invoiceId, invoice);
   }
 
-  // Create the per-invoice Hedera distribution schedule (HSS) — associate the
-  // token with the two symbolic investor accounts, then build a PENDING schedule
-  // that splits the HTS supply 60/40 (ADR-017). Skip if already created.
-  // NON-FATAL: mint + pool are the critical legs; if this fails after retries we
-  // roll forward with scheduleId null (settlement's Hedera leg can be added later).
-  let scheduleId = (invoice as any).scheduleId as string | undefined;
-  if (!scheduleId) {
+  // Associate the two symbolic investor accounts with the freshly minted token so
+  // they can receive HTS transfers at settlement. The distribution schedule itself
+  // is created AND executed at settle time (Commit 3), not here. Idempotent
+  // (TOKEN_ALREADY_ASSOCIATED tolerated) + retried. Skip if already associated.
+  if (!(invoice as any).investorsAssociated) {
     try {
-      scheduleId = await withRetry(async () => {
-        const operatorId = process.env.HEDERA_OPERATOR_ID!;
+      await withRetry(async () => {
         const inv1Id = process.env.HEDERA_INVESTOR1_ID!;
         const inv1Key = PrivateKey.fromStringDer(process.env.HEDERA_INVESTOR1_KEY!);
         const inv2Id = process.env.HEDERA_INVESTOR2_ID!;
         const inv2Key = PrivateKey.fromStringDer(process.env.HEDERA_INVESTOR2_KEY!);
-        const trigId = process.env.HEDERA_SETTLEMENT_TRIGGER_ID!;
-        const trigKey = PrivateKey.fromStringDer(process.env.HEDERA_SETTLEMENT_TRIGGER_KEY!);
-
         await associateToken(tokenId!, inv1Id, inv1Key);
         await associateToken(tokenId!, inv2Id, inv2Key);
-
-        const supply = invoice.amountUsd * 100; // token has 2 decimals
-        const amt1 = Math.floor(supply * 0.6);
-        const amt2 = supply - amt1;
-        const sched = await scheduleDistribution({
-          tokenId: tokenId!,
-          recipients: [
-            { accountId: inv1Id, amount: amt1 },
-            { accountId: inv2Id, amount: amt2 },
-          ],
-          treasuryAccountId: operatorId,
-          settlementTrigger: { accountId: trigId, publicKey: trigKey.publicKey },
-        });
-        return sched.scheduleId;
       });
-      (invoice as any).scheduleId = scheduleId;
-      store.invoices.set(params.invoiceId, invoice);
-    } catch (e) {
-      console.error('Schedule creation failed (rolling forward, scheduleId null):', e);
-      scheduleId = undefined;
+    } catch {
+      return NextResponse.json(
+        { error: 'Could not secure the offer. Please try again.' },
+        { status: 502 }
+      );
     }
+    (invoice as any).investorsAssociated = true;
+    store.invoices.set(params.invoiceId, invoice);
   }
 
   const hashscanUrl = `https://hashscan.io/testnet/token/${tokenId}`;
-  return NextResponse.json({ tokenId, hashscanUrl, poolAddress, scheduleId: scheduleId ?? null, fromCache: false });
+  return NextResponse.json({ tokenId, hashscanUrl, poolAddress, fromCache: false });
 }
