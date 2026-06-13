@@ -43,7 +43,45 @@ contract InvoicePool {
         usdc = IERC20(_usdc);
     }
 
-    // To implement next prompt:
-    // function deposit(uint256 amount) external { ... }
-    // function settle(uint256 paymentAmount) external { ... }
+    function deposit(uint256 amount) external {
+        if (funded) revert PoolFunded();
+
+        if (deposits[msg.sender] == 0) {
+            investors.push(msg.sender);
+        }
+
+        usdc.transferFrom(msg.sender, address(this), amount);
+        totalRaised += amount;
+        deposits[msg.sender] += amount;
+
+        emit Deposit(msg.sender, amount);
+
+        if (totalRaised >= targetAmount) {
+            funded = true;
+            usdc.transfer(freelancer, targetAmount);
+            emit Funded(freelancer, targetAmount);
+        }
+    }
+
+    function settle(uint256 paymentAmount) external {
+        if (!funded) revert PoolNotFunded();
+        if (settled) revert AlreadySettled();
+        if (paymentAmount < clientPaymentAmount) revert InsufficientPayment();
+
+        usdc.transferFrom(msg.sender, address(this), paymentAmount);
+
+        uint256 agentFee = (paymentAmount * agentFeeBasisPoints) / 10000;
+        uint256 distributableAmount = paymentAmount - agentFee;
+
+        for (uint256 i = 0; i < investors.length; i++) {
+            address investor = investors[i];
+            uint256 investorShare = (distributableAmount * deposits[investor]) / totalRaised;
+            usdc.transfer(investor, investorShare);
+        }
+
+        usdc.transfer(agent, agentFee);
+        settled = true;
+
+        emit Settled(distributableAmount, agentFee);
+    }
 }
