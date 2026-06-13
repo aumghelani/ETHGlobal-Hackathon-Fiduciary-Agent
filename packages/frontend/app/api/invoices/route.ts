@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
 import { randomUUID } from 'crypto';
 import { submitInvoiceHash, isHashAlreadySubmitted } from '@fiduciary/hedera';
+import { verifyProof } from '@/lib/worldid';
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -17,6 +18,41 @@ export async function POST(req: NextRequest) {
       { error: 'Missing required fields: clientName, amountUsd, daysUntilDue' },
       { status: 400 }
     );
+  }
+
+  // World ID identity gate (THREAT_MODEL Layer 1 — Sybil resistance on the supply side).
+  // ONLY enforced when WORLDID_APP_ID is configured. Without it we degrade gracefully
+  // (demo mode) so the flow never breaks before the App ID exists. When configured, a
+  // valid proof-of-personhood is REQUIRED to create an invoice.
+  if (process.env.WORLDID_APP_ID) {
+    const p = body.worldIdProof;
+    if (!p?.proof || !p?.nullifierHash || !p?.merkleRoot || !p?.verificationLevel) {
+      return NextResponse.json(
+        { error: 'Identity verification required. Please verify with World ID and try again.' },
+        { status: 403 }
+      );
+    }
+    try {
+      const result = await verifyProof({
+        proof: p.proof,
+        nullifierHash: p.nullifierHash,
+        merkleRoot: p.merkleRoot,
+        verificationLevel: p.verificationLevel,
+        action: p.action,
+      });
+      if (!result.success) {
+        return NextResponse.json(
+          { error: 'Identity verification failed. Please verify with World ID and try again.' },
+          { status: 403 }
+        );
+      }
+    } catch (err) {
+      console.error('[invoices] World ID verify error:', err);
+      return NextResponse.json(
+        { error: 'Could not verify identity right now. Please try again.' },
+        { status: 502 }
+      );
+    }
   }
 
   // HCS double-spend prevention (THREAT_MODEL Layer 3). Before creating the
