@@ -16,7 +16,8 @@
     "deploy:contracts": "tsx scripts/deploy-contracts.ts",
     "setup:hedera": "tsx scripts/setup-hedera.ts",
     "test:llm-bid": "tsx scripts/test-llm-bid.ts",
-    "test:hedera-schedule": "tsx scripts/test-hedera-schedule.ts"
+    "test:hedera-schedule": "tsx scripts/test-hedera-schedule.ts",
+    "verify:arc-deploy": "tsx scripts/verify-arc-deploy.ts"
   },
   "engines": {
     "node": ">=20.0.0",
