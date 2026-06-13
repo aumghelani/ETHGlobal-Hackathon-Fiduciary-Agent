@@ -34,10 +34,13 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
 
   // Public deposits go straight to the InvoicePool (not tracked per-investor in
   // the store); count as one public participant when the pool has any funding.
-  const publicMappedUsd = net * (pool.raised / pool.target);
+  // Guard target>0 (a fresh/misconfigured pool could read 0 → divide-by-zero/Infinity).
+  const publicMappedUsd = pool.target > 0 ? net * (pool.raised / pool.target) : 0;
   const publicInvestorCount = pool.raised > 0 ? 1 : 0;
 
-  const displayedTotalUsd = publicMappedUsd + privateRaisedUsd;
+  // Cap at net so the UI never shows >100% funded (an over-funded pool, or public+private
+  // drift, could otherwise push the displayed total past the invoice's net).
+  const displayedTotalUsd = Math.min(net, publicMappedUsd + privateRaisedUsd);
 
   // Symbolic settled-state figures (the dollar story the UI narrates). Mirrors the
   // /settle route's split: agent earns its fee, investors receive the remainder.
