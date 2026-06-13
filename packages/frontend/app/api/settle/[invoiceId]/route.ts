@@ -76,19 +76,26 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     const amt1 = Math.floor(supply * 0.6);
     const amt2 = supply - amt1;
 
-    const sched = await withRetry(() =>
-      scheduleDistribution({
-        tokenId,
-        recipients: [
-          { accountId: inv1Id, amount: amt1 },
-          { accountId: inv2Id, amount: amt2 },
-        ],
-        treasuryAccountId: operatorId,
-        settlementTrigger: { accountId: trigId, publicKey: trigKey.publicKey },
-      })
-    );
-    scheduleId = sched.scheduleId;
-    (invoice as any).scheduleId = scheduleId;
+    // Reuse a schedule from a prior attempt if one was already created (create succeeded
+    // but execute failed) — avoids leaving a duplicate PENDING schedule on a re-run.
+    if ((invoice as any).scheduleId) {
+      scheduleId = (invoice as any).scheduleId;
+    } else {
+      const sched = await withRetry(() =>
+        scheduleDistribution({
+          tokenId,
+          recipients: [
+            { accountId: inv1Id, amount: amt1 },
+            { accountId: inv2Id, amount: amt2 },
+          ],
+          treasuryAccountId: operatorId,
+          settlementTrigger: { accountId: trigId, publicKey: trigKey.publicKey },
+        })
+      );
+      scheduleId = sched.scheduleId;
+      (invoice as any).scheduleId = scheduleId;
+      store.invoices.set(params.invoiceId, invoice);
+    }
 
     await gap();
     const exec = await withRetry(() => executeSchedule(scheduleId, trigKey));

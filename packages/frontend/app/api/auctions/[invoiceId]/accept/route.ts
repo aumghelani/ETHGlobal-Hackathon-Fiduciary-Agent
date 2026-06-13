@@ -40,6 +40,18 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
+  // Claim the accepted agent NOW — synchronously, before the first await — so a
+  // concurrent request for a DIFFERENT agent hits the guard above and is rejected
+  // (Node is single-threaded; this claim is atomic relative to other requests). This
+  // closes the race where two different-agent accepts both pass the guard and double-mint.
+  if (!(invoice as any).acceptedAgentName) {
+    (invoice as any).acceptedAgentName = agentName;
+    if (!(invoice as any).status || (invoice as any).status === 'pending_auction') {
+      (invoice as any).status = 'funding';
+    }
+    store.invoices.set(params.invoiceId, invoice);
+  }
+
   // Fully done (token minted, pool deployed, investors associated) → idempotent fast-path.
   // Don't short-circuit if Circle is configured but the agent wallet wasn't provisioned
   // yet — let the flow fall through to the (idempotent, best-effort) provisioning block.
