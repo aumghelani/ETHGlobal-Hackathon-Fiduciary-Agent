@@ -1,84 +1,131 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CheckCircle2 } from 'lucide-react';
-import type { Bid } from '@fiduciary/agents';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+type InvestData = {
+  clientName: string;
+  amountUsd: number;
+  daysUntilDue: number;
+  netToFreelancer: number | null;
+  agentName: string | null;
+  feePercent: number | null;
+  pool: { raised: number; target: number; remaining: number; funded: boolean };
+};
 
 export default function InvestInvoicePage() {
   const params = useParams();
   const invoiceId = params.invoiceId as string;
 
-  const [invoice, setInvoice] = useState<any | null>(null);
-  const [netToFreelancer, setNetToFreelancer] = useState<number | null>(null);
+  const [data, setData] = useState<InvestData | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [share, setShare] = useState('');
+  const [funding, setFunding] = useState(false);
+  const [error, setError] = useState('');
+
+  async function refresh() {
+    const res = await fetch(`/api/invest/${invoiceId}`);
+    if (res.ok) {
+      setData(await res.json());
+    }
+    setLoaded(true);
+  }
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      const res = await fetch(`/api/invoices/${invoiceId}`);
-      if (!res.ok) {
-        if (!cancelled) setLoaded(true);
-        return;
-      }
-      const { invoice } = await res.json();
-      if (cancelled) return;
-      setInvoice(invoice);
-
-      if (invoice?.acceptedAgentName) {
-        const bidsRes = await fetch(`/api/auctions/${invoiceId}/start`, { method: 'POST' });
-        if (bidsRes.ok) {
-          const { bids } = await bidsRes.json();
-          const accepted = (bids as Bid[]).find(
-            (b) => b.agentName === invoice.acceptedAgentName
-          );
-          if (!cancelled && accepted) setNetToFreelancer(accepted.netToFreelancer);
-        }
-      }
-      if (!cancelled) setLoaded(true);
-    }
-
-    load();
-    return () => { cancelled = true; };
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoiceId]);
 
-  if (loaded && (!invoice || !invoice.tokenId)) {
-    return <p className="text-slate-600">This invoice hasn&apos;t been tokenized yet.</p>;
+  async function handleFund(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    const amount = Number(share);
+    if (!(amount > 0)) {
+      setError('Enter an amount greater than zero.');
+      return;
+    }
+    setFunding(true);
+    try {
+      const res = await fetch(`/api/invest/${invoiceId}/fund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountUsd: amount }),
+      });
+      if (!res.ok) throw new Error('Could not fund this invoice. Please try again.');
+      const result = await res.json();
+      setData((prev) => (prev ? { ...prev, pool: result.pool } : prev));
+      setShare('');
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setFunding(false);
+    }
   }
 
-  if (!invoice) {
-    return null;
+  if (loaded && !data) {
+    return <p className="text-slate-600">This invoice isn&apos;t available to fund yet.</p>;
   }
+  if (!data) return null;
 
-  const hashscanUrl = `https://hashscan.io/testnet/token/${invoice.tokenId}`;
+  const net = data.netToFreelancer ?? data.amountUsd;
+  // Map the on-chain pool (small USDC) back to Maria's full dollar net for display.
+  const fraction = data.pool.target > 0 ? data.pool.raised / data.pool.target : 0;
+  const fundedDollars = Math.round(net * fraction);
+  const percent = Math.min(100, Math.round(fraction * 100));
 
   return (
-    <div className="mx-auto max-w-md text-center">
-      <CheckCircle2 className="mx-auto text-emerald-500" size={64} />
-      <h1 className="mt-4 text-2xl font-bold text-slate-900">Your offer is secured</h1>
-      {netToFreelancer !== null && (
-        <p className="mt-2 text-slate-600">
-          ${netToFreelancer.toLocaleString()} will arrive in your bank account within 24 hours
-        </p>
-      )}
+    <div className="mx-auto max-w-md">
+      <h1 className="text-2xl font-bold text-slate-900">Fund this invoice</h1>
 
-      <div className="mt-6 rounded-lg border border-slate-200 p-4 text-left text-sm text-slate-700">
-        <div>Client: {invoice.clientName}</div>
-        <div>Amount: ${invoice.amountUsd.toLocaleString()}</div>
-        <div>Payment expected: {invoice.daysUntilDue} days</div>
-        {netToFreelancer !== null && (
-          <div>Your net: ${netToFreelancer.toLocaleString()}</div>
+      <div className="mt-6 rounded-lg border border-slate-200 p-4 text-sm text-slate-700">
+        <div>Client: {data.clientName}</div>
+        <div>Amount: ${data.amountUsd.toLocaleString()}</div>
+        <div>Payment expected: {data.daysUntilDue} days</div>
+        {data.agentName && data.feePercent !== null && (
+          <div>
+            Managed by {data.agentName} · {data.feePercent}% fee
+          </div>
         )}
       </div>
 
-      <a
-        href={hashscanUrl}
-        target="_blank"
-        rel="noopener"
-        className="mt-8 inline-block text-xs text-slate-400 hover:text-slate-600"
-      >
-        Verification on Hedera ↗
-      </a>
+      <div className="mt-6">
+        <div className="flex justify-between text-sm text-slate-600">
+          <span>${fundedDollars.toLocaleString()} funded</span>
+          <span>of ${net.toLocaleString()}</span>
+        </div>
+        <div className="mt-2 h-3 w-full rounded-full bg-slate-100">
+          <div
+            className="h-3 rounded-full bg-primary transition-all"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        {data.pool.funded && (
+          <p className="mt-2 text-sm font-medium text-emerald-700">
+            Fully funded — the freelancer has been paid.
+          </p>
+        )}
+      </div>
+
+      {!data.pool.funded && (
+        <form className="mt-6 space-y-3" onSubmit={handleFund}>
+          <label className="text-sm font-medium text-slate-700">Your share</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+            <Input
+              type="number"
+              placeholder="100"
+              className="pl-7"
+              value={share}
+              onChange={(e) => setShare(e.target.value)}
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={funding}>
+            {funding ? 'Funding...' : 'Buy a piece'}
+          </Button>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </form>
+      )}
     </div>
   );
 }
