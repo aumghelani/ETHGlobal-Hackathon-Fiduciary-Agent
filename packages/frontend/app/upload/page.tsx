@@ -128,17 +128,17 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="text-3xl font-bold text-slate-900">Get cash today</h1>
-      <p className="mt-2 text-slate-600">
-        Sell your unpaid invoice. We&apos;ll have offers in 30 seconds.
+      <h1 className="font-display text-3xl font-bold tracking-tight text-fg">Get cash today</h1>
+      <p className="mt-2 text-fg-muted">
+        Upload your unpaid invoice — agents will have offers in seconds.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-2.5">
         <VerifiedBadge label="Identity verified" source="World ID" />
         <VerifiedBadge label="Domain verified" source="DKIM proof" />
       </div>
 
-      <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+      <form className="mt-7 space-y-5 rounded-lg border border-line bg-surface p-6 shadow-sm" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label htmlFor="file">Upload invoice PDF or photo</Label>
           <Input
@@ -163,7 +163,7 @@ export default function UploadPage() {
         <div className="space-y-2">
           <Label htmlFor="amountUsd">Amount due</Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle">
               $
             </span>
             <Input
@@ -187,7 +187,7 @@ export default function UploadPage() {
               value={daysUntilDue}
               onChange={(e) => setDaysUntilDue(e.target.value)}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-fg-subtle">
               days
             </span>
           </div>
@@ -197,8 +197,8 @@ export default function UploadPage() {
             otherwise we degrade gracefully with a subtle note (demo never breaks). */}
         {WORLD_ID_ENABLED ? (
           worldIdResult ? (
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
-              <CheckCircle2 size={16} className="text-emerald-500" />
+            <div className="flex items-center justify-center gap-2 rounded-md border border-brand/30 bg-brand/[0.08] p-3 text-sm font-medium text-fg">
+              <CheckCircle2 size={16} className="text-brand" />
               Verified as a real person
             </div>
           ) : (
@@ -231,11 +231,11 @@ export default function UploadPage() {
             </>
           )
         ) : DEMO_BYPASS && WLD_APP_ID ? (
-          <p className="text-center text-xs text-amber-500">
+          <p className="text-center text-xs text-warn">
             Demo mode — World ID verification bypassed.
           </p>
         ) : (
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-fg-subtle">
             Identity verification runs in production.
           </p>
         )}
@@ -249,14 +249,14 @@ export default function UploadPage() {
           {isSubmitting ? "Finding offers..." : "Get offers"}
         </Button>
 
-        {error && <p className="text-center text-sm text-red-600">{error}</p>}
+        {error && <p className="text-center text-sm text-danger">{error}</p>}
 
         {duplicate && (
-          <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            <ShieldAlert size={18} className="mt-0.5 shrink-0 text-amber-500" />
+          <div className="flex items-start gap-3 rounded-md border border-warn/40 bg-warn/[0.1] p-4 text-sm text-fg">
+            <ShieldAlert size={18} className="mt-0.5 shrink-0 text-warn" />
             <div>
               <p className="font-semibold">This invoice has already been factored.</p>
-              <p className="mt-1 text-amber-800">
+              <p className="mt-1 text-fg-muted">
                 Our audit log shows this exact invoice was already submitted — it can&apos;t be sold twice.
                 Upload a different invoice to continue.
               </p>
@@ -264,9 +264,7 @@ export default function UploadPage() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-400">
-          Trusted by 70M+ freelancers
-        </p>
+        <p className="text-center text-xs text-fg-subtle">Trusted by 70M+ freelancers</p>
       </form>
     </div>
   );
