@@ -48,9 +48,15 @@ export async function submitInvoiceHash(
     const receipt = await tx.getReceipt(client);
 
     // topicSequenceNumber is a Long; consensus timestamp comes from the record.
-    const sequenceNumber = receipt.topicSequenceNumber
-      ? receipt.topicSequenceNumber.toNumber()
-      : 0;
+    // Throw on a null sequence rather than recording a fake 0 (a real seq 0 is
+    // indistinguishable from a failure, which would corrupt the double-spend audit).
+    // The caller fails open, so the invoice is still created — just without the hcs fields.
+    if (receipt.topicSequenceNumber === null || receipt.topicSequenceNumber === undefined) {
+      throw new Error(
+        `HCS submit receipt has no topicSequenceNumber (status: ${receipt.status.toString()}).`
+      );
+    }
+    const sequenceNumber = receipt.topicSequenceNumber.toNumber();
     const record = await tx.getRecord(client);
     const consensusTimestamp = record.consensusTimestamp.toString();
 
