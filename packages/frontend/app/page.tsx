@@ -5,16 +5,21 @@ import {
   ArrowRight,
   Zap,
   ShieldCheck,
-  TrendingUp,
   Sparkles,
   Gavel,
   Coins,
   Clock,
   Lock,
   FileCheck,
+  Cpu,
+  Banknote,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { InversionChart } from '@/components/landing/InversionChart';
+import { ActivityWidget } from '@/components/landing/ActivityWidget';
+import { ArchitectureFlow } from '@/components/landing/ArchitectureFlow';
 
 const reveal = {
   initial: { opacity: 0, y: 24 },
@@ -50,13 +55,10 @@ export default function Home() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="mx-auto mt-6 max-w-4xl font-display text-5xl font-bold leading-[1.02] tracking-tight text-fg sm:text-7xl"
+            className="mx-auto mt-6 max-w-4xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-fg sm:text-6xl"
           >
-            Your invoice is worth
-            <br />
-            <span className="bg-gradient-to-r from-brand to-accent bg-clip-text text-transparent">
-              money today.
-            </span>
+            Why does it cost <span className="text-accent">more</span> to get paid early
+            <br className="hidden sm:block" /> when you have <span className="text-brand">better</span> credit?
           </motion.h1>
 
           <motion.p
@@ -65,9 +67,9 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.12 }}
             className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-fg-muted sm:text-xl"
           >
-            Stop waiting 60 days to get paid. Upload an unpaid invoice and AI agents{' '}
-            <span className="font-medium text-fg">compete</span> to advance you cash. Investors back it and
-            earn yield when your client pays.
+            Fiduciary fixes that. AI agents <span className="font-medium text-fg">compete</span> to fund your
+            invoice — the most trusted one wins by offering you <span className="font-medium text-fg">more
+            money for a lower fee</span>. Watch a $5,000 invoice get factored in 30 seconds.
           </motion.p>
 
           <motion.div
@@ -96,6 +98,16 @@ export default function Home() {
             <HeroStat big="$3T" label="factoring market" />
             <HeroStat big="70M" label="freelancers excluded" />
             <HeroStat big="30s" label="to an offer" />
+          </motion.div>
+
+          {/* Live on-chain activity — renders only once there's real activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.32 }}
+            className="mx-auto mt-6 max-w-xl text-left"
+          >
+            <ActivityWidget />
           </motion.div>
         </div>
       </section>
@@ -184,7 +196,17 @@ export default function Home() {
           </p>
         </motion.div>
 
-        <motion.div {...reveal} className="mt-12 grid gap-4 sm:grid-cols-2">
+        {/* The fee-vs-reputation curve — the whole insight in one glance */}
+        <motion.div {...reveal} className="mx-auto mt-12 max-w-2xl">
+          <Card className="p-6">
+            <InversionChart />
+            <p className="mt-2 text-center text-sm font-medium text-fg-muted">
+              Fee charged <span className="text-fg">falls</span> as reputation <span className="text-fg">rises</span>.
+            </p>
+          </Card>
+        </motion.div>
+
+        <motion.div {...reveal} className="mt-6 grid gap-4 sm:grid-cols-2">
           <CompareCard
             name="Newcomer"
             sub="0 deals · unproven"
@@ -239,6 +261,133 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ====================== ARCHITECTURE ====================== */}
+      <section className="mx-auto max-w-5xl px-5 py-20">
+        <motion.div {...reveal} className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Under the hood</p>
+          <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-fg sm:text-4xl">
+            One pipeline, five steps, three chains.
+          </h2>
+        </motion.div>
+        <motion.div {...reveal} className="mt-12">
+          <ArchitectureFlow />
+        </motion.div>
+      </section>
+
+      {/* ====================== SPONSOR STORYTELLING ====================== */}
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+        <div className="mx-auto max-w-5xl px-5 py-20">
+          <motion.div {...reveal} className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand">Why this stack</p>
+            <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-fg sm:text-4xl">
+              Each chain does something the others can&apos;t.
+            </h2>
+          </motion.div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-3">
+            {[
+              { name: 'Hedera', body: "The agent's fee is a native HTS custom fee — enforced at the protocol layer, not by trust. Plus a consensus log so an invoice can't be sold twice." },
+              { name: 'Arc', body: 'USDC-native gas means agents need no separate gas treasury. The InvoicePool is programmable settlement: conditional release, then atomic distribution.' },
+              { name: 'Unlink', body: "Privacy as a primitive. Institutional investors don't broadcast position sizes; freelancers don't publish their income to a public ledger." },
+            ].map((s, i) => (
+              <motion.div key={s.name} {...reveal} transition={{ ...reveal.transition, delay: i * 0.1 }}>
+                <Card className="h-full p-6">
+                  <div className="font-display text-lg font-bold text-fg">{s.name}</div>
+                  <p className="mt-2 text-sm leading-relaxed text-fg-muted">{s.body}</p>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================== COMPARISON TABLE ====================== */}
+      <section className="mx-auto max-w-5xl px-5 py-20">
+        <motion.div {...reveal} className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">How it&apos;s different</p>
+          <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-fg sm:text-4xl">
+            Factoring, rebuilt for everyone.
+          </h2>
+        </motion.div>
+        <motion.div {...reveal} className="mt-10 overflow-hidden rounded-lg border border-line">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line bg-surface-2 text-left">
+                <th className="px-4 py-3 font-medium text-fg-muted"></th>
+                <th className="px-4 py-3 font-medium text-fg-subtle">Traditional</th>
+                <th className="px-4 py-3 font-medium text-fg-subtle">Crypto receivables</th>
+                <th className="px-4 py-3 font-semibold text-brand">Fiduciary</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              <CmpRow label="Minimum invoice" a="$50,000+" b="$5,000+" c="$100" />
+              <CmpRow label="Time to funding" a="5–10 days" b="24–48 hrs" c="~30 seconds" />
+              <CmpRow label="Fee discovery" a="Negotiated" b="Fixed schedule" c="Real-time AI auction" />
+              <CmpRow label="Who it's for" a="Corporates" b="Crypto-native" c="Anyone" />
+              <CmpRow label="Privacy" a="Public" b="On-chain visible" c="Optional private" />
+            </tbody>
+          </table>
+        </motion.div>
+        {/* The subtle template seed */}
+        <motion.p {...reveal} className="mx-auto mt-6 max-w-2xl text-center text-sm text-fg-subtle">
+          The same engine factors any receivable — musician royalties, gig wages, tax refunds, medical claims.
+          An invoice is just the first input.
+        </motion.p>
+      </section>
+
+      {/* ====================== WHY NOW + AGENTS ====================== */}
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+        <div className="mx-auto max-w-5xl px-5 py-20">
+          <div className="grid gap-12 lg:grid-cols-2">
+            {/* Why now */}
+            <motion.div {...reveal}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why now</p>
+              <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+                This couldn&apos;t have shipped two years ago.
+              </h2>
+              <ul className="mt-6 space-y-4">
+                {[
+                  { icon: Cpu, t: 'AI agents got fast enough for real-time bidding — Haiku reasons in ~2 seconds per bid.' },
+                  { icon: Banknote, t: 'Sub-cent stablecoin fees make factoring a $100 invoice economically viable.' },
+                  { icon: Zap, t: 'USDC-native gas removes the multi-token treasury problem for autonomous agents.' },
+                  { icon: Lock, t: 'Programmable privacy layers (Unlink) matured enough for real institutional positions.' },
+                ].map((r) => (
+                  <li key={r.t} className="flex gap-3">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-brand/12 text-brand">
+                      <r.icon size={14} />
+                    </span>
+                    <span className="text-sm leading-relaxed text-fg-muted">{r.t}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* Meet the agents */}
+            <motion.div {...reveal}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand">Meet the agents</p>
+              <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+                Two competitors, distinct personalities.
+              </h2>
+              <div className="mt-6 space-y-3">
+                <AgentCard
+                  initial="V"
+                  name="Veteran Agent"
+                  rep="⭐ 4.8 · 500 deals"
+                  quote="The client's payment record is strong. I'm comfortable offering a tight rate — low risk here."
+                  tone="brand"
+                />
+                <AgentCard
+                  initial="N"
+                  name="Newbie Agent"
+                  rep="⭐ new · 0 deals"
+                  quote="Still building my reputation, so I'll price in a bit more caution — but the terms stay competitive."
+                  tone="muted"
+                />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* ====================== FINAL CTA ====================== */}
       <section className="mx-auto max-w-5xl px-5 py-24">
         <motion.div
@@ -263,13 +412,83 @@ export default function Home() {
           </div>
         </motion.div>
 
-        <footer className="mt-14 border-t border-line pt-6 text-center">
-          <p className="text-xs font-medium uppercase tracking-wider text-fg-subtle">
-            Tokenized on Hedera · Settled on Arc · Private with Unlink
+        <footer className="mt-16 border-t border-line pt-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <p className="text-xs font-medium uppercase tracking-wider text-fg-subtle">
+              Tokenized on Hedera · Settled on Arc · Private with Unlink
+            </p>
+            <div className="flex items-center gap-4 text-sm">
+              <a
+                href="https://github.com/aumghelani/ETHGlobal-Hackathon-Fiduciary-Agent"
+                target="_blank"
+                rel="noopener"
+                className="text-fg-muted hover:text-fg"
+              >
+                GitHub
+              </a>
+              <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg-muted">
+                Built in 36 hours
+              </span>
+              <span className="text-xs text-fg-subtle">MIT</span>
+            </div>
+          </div>
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-fg-subtle/80 sm:text-left">
+            Sources: U.S. freelance workforce — Upwork/Statista (~70M). Global factoring market — FCI ~$3.7T (2024).
+            Stats above reflect live testnet activity from this demo.
           </p>
         </footer>
       </section>
     </div>
+  );
+}
+
+function CmpRow({ label, a, b, c }: { label: string; a: string; b: string; c: string }) {
+  return (
+    <tr>
+      <td className="px-4 py-3 font-medium text-fg">{label}</td>
+      <td className="px-4 py-3 text-fg-subtle">{a}</td>
+      <td className="px-4 py-3 text-fg-subtle">{b}</td>
+      <td className="bg-brand/[0.05] px-4 py-3 font-medium text-fg">
+        <span className="inline-flex items-center gap-1">
+          <Check size={13} className="text-brand" />
+          {c}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function AgentCard({
+  initial,
+  name,
+  rep,
+  quote,
+  tone,
+}: {
+  initial: string;
+  name: string;
+  rep: string;
+  quote: string;
+  tone: 'brand' | 'muted';
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            'grid h-10 w-10 place-items-center rounded-lg text-sm font-bold ' +
+            (tone === 'brand' ? 'bg-brand/15 text-brand' : 'bg-accent/15 text-accent')
+          }
+        >
+          {initial}
+        </span>
+        <div>
+          <div className="text-sm font-semibold text-fg">{name}</div>
+          <div className="text-xs text-fg-subtle">{rep}</div>
+        </div>
+      </div>
+      <p className="mt-3 text-sm italic leading-relaxed text-fg-muted">&ldquo;{quote}&rdquo;</p>
+    </Card>
   );
 }
 
