@@ -45,7 +45,7 @@ export default function InvestInvoicePage() {
     setError('');
     const amount = Number(share);
     if (!(amount > 0)) {
-      setError('Enter an amount greater than zero.');
+      setError('Enter an amount in dollars greater than zero.');
       return;
     }
     setFunding(true);
@@ -55,8 +55,11 @@ export default function InvestInvoicePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amountUsd: amount }),
       });
-      if (!res.ok) throw new Error('Could not fund this invoice. Please try again.');
       const result = await res.json();
+      if (!res.ok) {
+        setError(result.error ?? 'Could not fund this invoice. Please try again.');
+        return;
+      }
       setData((prev) => (prev ? { ...prev, pool: result.pool } : prev));
       setShare('');
     } catch (e: any) {
@@ -129,17 +132,21 @@ export default function InvestInvoicePage() {
 
       {!data.pool.funded && (
         <form className="mt-6 space-y-3" onSubmit={handleFund}>
-          <label className="text-sm font-medium text-slate-700">Your share</label>
+          <label className="text-sm font-medium text-slate-700">Your share (in dollars)</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
             <Input
               type="number"
-              placeholder="100"
+              placeholder="500"
               className="pl-7"
               value={share}
               onChange={(e) => setShare(e.target.value)}
             />
           </div>
+          <p className="text-xs text-slate-400">
+            Enter amount in dollars. You can fund up to $
+            {Math.floor(net - fundedDollars).toLocaleString()} more.
+          </p>
           <Button type="submit" className="w-full" disabled={funding}>
             {funding ? 'Funding...' : 'Buy a piece'}
           </Button>
