@@ -13,8 +13,13 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     return NextResponse.json({ error: 'Invoice not yet accepted' }, { status: 409 });
   }
 
-  const body = await req.json();
-  const dollars = Number(body.amountUsd);
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+  const dollars = Number(body?.amountUsd);
   if (!(dollars > 0)) {
     return NextResponse.json({ error: 'Enter an amount greater than zero.' }, { status: 400 });
   }
@@ -22,8 +27,22 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   const bids = store.bids.get(params.invoiceId) || [];
   const winningBid = bids.find(b => b.agentName === (invoice as any).acceptedAgentName);
   const net = winningBid?.netToFreelancer ?? invoice.amountUsd;
+  if (!(net > 0)) {
+    return NextResponse.json({ error: 'This invoice cannot be funded.' }, { status: 409 });
+  }
 
-  const before = await getPoolState(poolAddress);
+  let before;
+  try {
+    before = await getPoolState(poolAddress);
+  } catch {
+    return NextResponse.json(
+      { error: 'Could not complete the private deposit. Please try again.' },
+      { status: 502 }
+    );
+  }
+  if (!(before.target > 0)) {
+    return NextResponse.json({ error: 'This invoice cannot be funded.' }, { status: 409 });
+  }
   const privateDeposits = ((invoice as any).privateDeposits ?? []) as Array<{ amountUsd: number }>;
   const privateRaisedUsd = privateDeposits.reduce((s, p) => s + p.amountUsd, 0);
   const publicMappedUsd = net * (before.raised / before.target);
@@ -51,7 +70,15 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
-  const { txHash } = await privateDepositOnUnlink({ amountUsdc });
+  let txHash: string;
+  try {
+    ({ txHash } = await privateDepositOnUnlink({ amountUsdc }));
+  } catch {
+    return NextResponse.json(
+      { error: 'Could not complete the private deposit. Please try again.' },
+      { status: 502 }
+    );
+  }
 
   (invoice as any).privateDeposits = [
     ...privateDeposits,
