@@ -58,7 +58,7 @@ export default function AuctionPage() {
       if (!res.ok) throw new Error('Failed to secure offer');
       const data = await res.json();
       console.log('Tokenized:', data);
-      router.push(`/invest/${invoiceId}`);
+      router.push(`/invest/${invoiceId}?from=accept`);
     } catch (e: any) {
       setAccepting(null);
       setError(e.message);

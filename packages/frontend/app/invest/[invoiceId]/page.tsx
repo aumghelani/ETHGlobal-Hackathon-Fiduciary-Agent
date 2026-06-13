@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { CheckCircle2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -16,6 +17,7 @@ type InvestData = {
 
 export default function InvestInvoicePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const invoiceId = params.invoiceId as string;
 
   const [data, setData] = useState<InvestData | null>(null);
@@ -23,6 +25,7 @@ export default function InvestInvoicePage() {
   const [share, setShare] = useState('');
   const [funding, setFunding] = useState(false);
   const [error, setError] = useState('');
+  const [showBanner, setShowBanner] = useState(searchParams.get('from') === 'accept');
 
   async function refresh() {
     const res = await fetch(`/api/invest/${invoiceId}`);
@@ -76,6 +79,23 @@ export default function InvestInvoicePage() {
 
   return (
     <div className="mx-auto max-w-md">
+      {showBanner && (
+        <div className="relative mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
+          <button
+            onClick={() => setShowBanner(false)}
+            className="absolute right-3 top-3 text-emerald-700/60 hover:text-emerald-800"
+            aria-label="Dismiss"
+          >
+            <X size={16} />
+          </button>
+          <CheckCircle2 className="mx-auto text-emerald-500" size={48} />
+          <h2 className="mt-2 text-lg font-bold text-emerald-900">Your offer is secured</h2>
+          <p className="mt-1 text-sm text-emerald-800">
+            ${net.toLocaleString()} will arrive in your bank account within 24 hours
+          </p>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold text-slate-900">Fund this invoice</h1>
 
       <div className="mt-6 rounded-lg border border-slate-200 p-4 text-sm text-slate-700">
