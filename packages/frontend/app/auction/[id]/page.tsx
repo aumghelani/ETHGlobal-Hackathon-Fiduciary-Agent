@@ -13,6 +13,7 @@ export default function AuctionPage() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,10 +47,22 @@ export default function AuctionPage() {
     return () => { cancelled = true; };
   }, [invoiceId]);
 
-  const handleAccept = (bid: Bid) => {
-    // For now, just log — wiring to Hedera mint comes in next prompt
-    console.log('Accepted bid:', bid);
-    alert(`Bid accepted from ${bid.agentName}. Next: tokenize on chain.`);
+  const handleAccept = async (bid: Bid) => {
+    setAccepting(bid.agentName);
+    try {
+      const res = await fetch(`/api/auctions/${invoiceId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentName: bid.agentName }),
+      });
+      if (!res.ok) throw new Error('Failed to secure offer');
+      const data = await res.json();
+      console.log('Tokenized:', data);
+      router.push(`/invest/${invoiceId}`);
+    } catch (e: any) {
+      setAccepting(null);
+      setError(e.message);
+    }
   };
 
   // Determine which bid is the "best offer" (highest netToFreelancer)
@@ -83,6 +96,8 @@ export default function AuctionPage() {
           completedDeals={500}
           bid={bids.find(b => b.agentName === 'Veteran Agent') || null}
           highlight={bestBid?.agentName === 'Veteran Agent'}
+          tokenizing={accepting === 'Veteran Agent'}
+          disabled={accepting !== null && accepting !== 'Veteran Agent'}
           onAccept={() => {
             const b = bids.find(x => x.agentName === 'Veteran Agent');
             if (b) handleAccept(b);
@@ -96,6 +111,8 @@ export default function AuctionPage() {
           completedDeals={0}
           bid={bids.find(b => b.agentName === 'Newbie Agent') || null}
           highlight={bestBid?.agentName === 'Newbie Agent'}
+          tokenizing={accepting === 'Newbie Agent'}
+          disabled={accepting !== null && accepting !== 'Newbie Agent'}
           onAccept={() => {
             const b = bids.find(x => x.agentName === 'Newbie Agent');
             if (b) handleAccept(b);

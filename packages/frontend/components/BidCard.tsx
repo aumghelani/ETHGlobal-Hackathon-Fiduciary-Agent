@@ -9,6 +9,8 @@ export function BidCard({
   completedDeals,
   bid,
   highlight = false,
+  tokenizing = false,
+  disabled = false,
   onAccept,
 }: {
   agentName: string;
@@ -16,6 +18,8 @@ export function BidCard({
   completedDeals: number;
   bid: Bid | null;
   highlight?: boolean;
+  tokenizing?: boolean;
+  disabled?: boolean;
   onAccept: () => void;
 }) {
   return (
@@ -61,13 +65,21 @@ export function BidCard({
             <p>{bid.reasoning}</p>
           </div>
 
-          <Button
-            className="mt-6 w-full"
-            variant={highlight ? "default" : "outline"}
-            onClick={onAccept}
-          >
-            Accept this offer
-          </Button>
+          {tokenizing ? (
+            <Button className="mt-6 w-full" variant={highlight ? "default" : "outline"} disabled>
+              <Loader2 className="mr-2 animate-spin" size={16} />
+              Securing your offer...
+            </Button>
+          ) : (
+            <Button
+              className="mt-6 w-full"
+              variant={highlight ? "default" : "outline"}
+              disabled={disabled}
+              onClick={onAccept}
+            >
+              Accept this offer
+            </Button>
+          )}
         </div>
       )}
     </div>
