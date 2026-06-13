@@ -16,7 +16,15 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
   const winningBid = bids.find(b => b.agentName === (invoice as any).acceptedAgentName);
   const net = winningBid?.netToFreelancer ?? invoice.amountUsd;
 
-  const pool = await getPoolState(poolAddress);
+  let pool;
+  try {
+    pool = await getPoolState(poolAddress);
+  } catch {
+    return NextResponse.json(
+      { error: 'Could not reach the payment network. Please try again.' },
+      { status: 502 }
+    );
+  }
 
   // Private deposits live in the store. Surface the SUM and the COUNT only —
   // never the per-investor amounts (privacy: would leak in dev tools).
@@ -31,6 +39,11 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
 
   const displayedTotalUsd = publicMappedUsd + privateRaisedUsd;
 
+  // Symbolic settled-state figures (the dollar story the UI narrates). Mirrors the
+  // /settle route's split: agent earns its fee, investors receive the remainder.
+  const agentEarnedUsd = winningBid?.agentEarnings ?? 0;
+  const investorsReceivedUsd = invoice.amountUsd - agentEarnedUsd;
+
   return NextResponse.json({
     clientName: (invoice as any).clientName,
     amountUsd: invoice.amountUsd,
@@ -38,10 +51,13 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     netToFreelancer: winningBid?.netToFreelancer ?? null,
     agentName: (invoice as any).acceptedAgentName ?? null,
     feePercent: winningBid?.feePercent ?? null,
+    status: (invoice as any).status ?? 'funding',
     pool,
     privateRaisedUsd,
     displayedTotalUsd,
     publicInvestorCount,
     privateInvestorCount,
+    agentEarnedUsd,
+    investorsReceivedUsd,
   });
 }

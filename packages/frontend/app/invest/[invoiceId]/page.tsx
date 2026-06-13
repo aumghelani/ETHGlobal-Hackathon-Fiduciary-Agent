@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { CheckCircle2, X, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,11 +13,14 @@ type InvestData = {
   netToFreelancer: number | null;
   agentName: string | null;
   feePercent: number | null;
+  status: string;
   pool: { raised: number; target: number; remaining: number; funded: boolean };
   privateRaisedUsd: number;
   displayedTotalUsd: number;
   publicInvestorCount: number;
   privateInvestorCount: number;
+  agentEarnedUsd: number;
+  investorsReceivedUsd: number;
 };
 
 export default function InvestInvoicePage() {
@@ -89,6 +93,37 @@ export default function InvestInvoicePage() {
   const fundedDollars = Math.round(data.displayedTotalUsd);
   const percent = net > 0 ? Math.min(100, Math.round((data.displayedTotalUsd / net) * 100)) : 0;
 
+  // Settled — the client has paid and the distribution has fired. Replace the whole
+  // funding surface with the closing-the-loop summary.
+  if (data.status === 'settled') {
+    return (
+      <div className="mx-auto max-w-md">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-6 text-center">
+          <CheckCircle2 className="mx-auto text-emerald-500" size={48} />
+          <h1 className="mt-2 text-2xl font-bold text-emerald-900">Settled</h1>
+          <p className="mt-2 text-sm text-emerald-800">
+            This invoice has been paid by the client.
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-lg border border-slate-200 p-4 text-sm text-slate-700">
+          <div>Client: {data.clientName}</div>
+          <div>Invoice amount: ${data.amountUsd.toLocaleString()}</div>
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            Investors received $
+            {data.investorsReceivedUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}.
+          </div>
+          {data.agentName && (
+            <div>
+              {data.agentName} earned $
+              {data.agentEarnedUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-md">
       {showBanner && (
@@ -143,6 +178,14 @@ export default function InvestInvoicePage() {
           <p className="mt-2 text-sm font-medium text-emerald-700">
             Fully funded — the freelancer has been paid.
           </p>
+        )}
+        {data.status === 'funding' && data.pool.funded && (
+          <Link
+            href={`/settle/${invoiceId}`}
+            className="mt-3 inline-block text-xs font-medium text-slate-400 hover:text-slate-600 hover:underline"
+          >
+            Trigger settlement (demo only) →
+          </Link>
         )}
       </div>
 
