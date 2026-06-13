@@ -12,9 +12,6 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "clean": "pnpm -r exec rm -rf node_modules dist .next",
-    "seed": "tsx scripts/seed-demo.ts",
-    "deploy:contracts": "tsx scripts/deploy-contracts.ts",
-    "setup:hedera": "tsx scripts/setup-hedera.ts",
     "test:llm-bid": "tsx scripts/test-llm-bid.ts",
     "test:hedera-schedule": "tsx scripts/test-hedera-schedule.ts",
     "verify:arc-deploy": "tsx scripts/verify-arc-deploy.ts"

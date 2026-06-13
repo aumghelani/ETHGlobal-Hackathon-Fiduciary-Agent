@@ -23,7 +23,7 @@ AI agents compete in a live auction to factor a freelancer's invoice. The freela
 ```
 Frontend (Next.js)
     ↓
-Backend (Express / Next.js API)
+Backend (Next.js API routes)
     ↓
 ┌──────────┬──────────┬──────────┐
 │  Hedera  │   Arc    │  Unlink  │
@@ -31,9 +31,9 @@ Backend (Express / Next.js API)
 └──────────┴──────────┴──────────┘
 ```
 
-- **Hedera HTS** — Each invoice becomes a tokenized RWA with native compliance (custom fees, KYC, scheduled distribution)
-- **Arc (Circle)** — USDC settlement, programmable distribution, agent custody via Circle Agent Wallet
-- **Unlink** — Private investor positions and sealed settlements
+- **Hedera** — three services: HTS (each invoice is a native token, supply = invoice amount, agent fee as a protocol-level custom fractional fee), HSS (scheduled distribution fires at settlement), HCS (invoice-hash audit log for double-spend prevention)
+- **Arc (Circle)** — an InvoicePool smart contract on Arc: conditional release at funding target, then programmable USDC distribution to investors + agent fee at settlement. The agent gets its own policy-gated Circle developer-controlled wallet on Arc.
+- **Unlink** — private investor deposits (server-side, no wallet UI); a position's identity and amount stay sealed from other investors
 
 ---
 
@@ -62,11 +62,7 @@ pnpm dev
 
 Open http://localhost:3000
 
-### Demo Seed
-To populate the marketplace with sample data:
-```bash
-pnpm seed
-```
+Agents and demo state are seeded in-memory at runtime — no seed step needed. Per-invoice pools deploy on Arc when an offer is accepted.
 
 ---
 
