@@ -12,8 +12,13 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     return NextResponse.json({ error: 'Invoice not yet accepted' }, { status: 409 });
   }
 
-  const body = await req.json();
-  const dollars = Number(body.amountUsd);
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+  const dollars = Number(body?.amountUsd);
   if (!(dollars > 0)) {
     return NextResponse.json({ error: 'Enter an amount greater than zero.' }, { status: 400 });
   }
@@ -21,8 +26,22 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   const bids = store.bids.get(params.invoiceId) || [];
   const winningBid = bids.find(b => b.agentName === (invoice as any).acceptedAgentName);
   const net = winningBid?.netToFreelancer ?? invoice.amountUsd;
+  if (!(net > 0)) {
+    return NextResponse.json({ error: 'This invoice cannot be funded.' }, { status: 409 });
+  }
 
-  const before = await getPoolState(poolAddress);
+  let before;
+  try {
+    before = await getPoolState(poolAddress);
+  } catch {
+    return NextResponse.json(
+      { error: 'Could not complete the deposit. Please try again.' },
+      { status: 502 }
+    );
+  }
+  if (!(before.target > 0)) {
+    return NextResponse.json({ error: 'This invoice cannot be funded.' }, { status: 409 });
+  }
   const remainingUsdc = before.target - before.raised;
   if (remainingUsdc <= 0) {
     return NextResponse.json(
@@ -53,8 +72,17 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
-  const { txHash } = await fundPool(poolAddress, depositUsdc);
-  const pool = await getPoolState(poolAddress);
+  let txHash: string;
+  let pool;
+  try {
+    ({ txHash } = await fundPool(poolAddress, depositUsdc));
+    pool = await getPoolState(poolAddress);
+  } catch {
+    return NextResponse.json(
+      { error: 'Could not complete the deposit. Please try again.' },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json({ txHash, pool });
 }
