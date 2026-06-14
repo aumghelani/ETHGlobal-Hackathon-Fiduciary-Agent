@@ -35,8 +35,9 @@ accepts our relying party (evidence below).
 - Management mode: Managed. RP ID and App ID are registered in the World Developer Portal.
 
 **3. Sybil resistance / uniqueness (a real constraint, not just "is a human").**
-- `packages/frontend/app/api/invoices/route.ts` extracts the `nullifier_hash` from the
-  verified proof, checks it against a persisted set (`store.nullifiers`), and **rejects a
+- `packages/frontend/app/api/invoices/route.ts` extracts the v4 `nullifier` from the
+  verified proof (lower-cased at the verify boundary in `lib/worldid.ts` so hex-casing can't
+  bypass the check), checks it against a persisted set (`store.nullifiers`), and **rejects a
   nullifier that has already factored an invoice** (HTTP 403, "one invoice per verified
   human"). The nullifier is recorded only after the invoice is successfully created, so a
   user rejected downstream is not permanently burned.

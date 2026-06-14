@@ -11,12 +11,16 @@
 // happens separately in /api/worldid/context (needs WORLDID_SIGNING_KEY). See lib/worldidSign.
 import { withRetry } from './retry';
 
-// The raw IDKit v4 result payload (forwarded as-is). Kept loose because we don't remap it.
+// The raw IDKit v4 result payload (forwarded as-is). Kept loose because we don't remap it,
+// but the fields the verify endpoint REQUIRES (action, environment, responses) mirror
+// @worldcoin/idkit-core's IDKitResultV4 so a malformed payload is caught before the fetch.
+// `environment` ("production" | "staging") rides inside this payload — it's what tells World
+// whether to accept simulator proofs, set by the IDKitRequestWidget's `environment` prop.
 export type WorldIdResult = {
   protocol_version?: string;
   nonce?: string;
   action?: string;
-  environment?: string;
+  environment?: 'production' | 'staging' | string;
   responses?: Array<{
     identifier?: string;
     proof?: string[];
@@ -58,7 +62,10 @@ export async function verifyProof(result: WorldIdResult): Promise<WorldIdVerifyR
     });
 
     if (res.ok) {
-      const nullifier = result.responses?.[0]?.nullifier;
+      // Normalize the nullifier before it's used as a uniqueness key. World's docs warn that
+      // raw hex casing differences ("0xAB" vs "0xab") can let the SAME human slip past a
+      // uniqueness check — so we lower-case it here, at the single point it enters our system.
+      const nullifier = result.responses?.[0]?.nullifier?.toLowerCase();
       return { success: true, nullifier };
     }
 

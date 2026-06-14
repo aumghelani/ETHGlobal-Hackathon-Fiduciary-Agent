@@ -16,6 +16,11 @@ import { CURRENCIES, currencySymbol, type Currency } from "@/lib/currency";
 // When the App ID is absent we degrade gracefully (gate bypassed with a visible note).
 const WLD_APP_ID = process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}` | undefined;
 const WLD_ACTION = process.env.NEXT_PUBLIC_WLD_ACTION ?? "factor-invoice";
+// IDKit defaults `environment` to "production" (NOT inferred from the app_id prefix), which
+// makes the World ID simulator reject the request ("Production request detected"). For
+// simulator testing this must be "staging". The app_id needs no special prefix in v4 — this
+// flag is the only thing that selects staging vs production. Default to staging for dev.
+const WLD_ENV = (process.env.NEXT_PUBLIC_WLD_ENV ?? "staging") as "production" | "staging";
 // Demo escape hatch (default OFF): when true, skip the World ID step so the full flow
 // can be demoed without a real World ID account. Must mirror the server's DEMO_BYPASS_WORLDID.
 const DEMO_BYPASS = process.env.NEXT_PUBLIC_DEMO_BYPASS_WORLDID === "true";
@@ -236,11 +241,23 @@ export default function UploadPage() {
                   onOpenChange={setWidgetOpen}
                   app_id={WLD_APP_ID!}
                   action={WLD_ACTION}
+                  environment={WLD_ENV}
                   rp_context={rpContext}
                   allow_legacy_proofs={true}
                   preset={proofOfHuman()}
                   onSuccess={(result: IDKitResult) => {
                     setWorldIdResult(result);
+                    setWidgetOpen(false);
+                  }}
+                  onError={(err: unknown) => {
+                    // Surface World's real failure reason instead of a generic message —
+                    // the IDKit error carries a code/detail (e.g. invalid_signature,
+                    // verification_rejected) that pinpoints why the proof was refused.
+                    console.error('[worldid] IDKit onError:', err);
+                    const e = err as { code?: string; detail?: string; message?: string };
+                    setError(
+                      `World ID error: ${e?.code ?? 'unknown'}${e?.detail ? ` — ${e.detail}` : e?.message ? ` — ${e.message}` : ''}`
+                    );
                     setWidgetOpen(false);
                   }}
                 />

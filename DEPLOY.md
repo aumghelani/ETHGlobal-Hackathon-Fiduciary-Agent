@@ -48,8 +48,10 @@ Copy the names from `.env.example`. The ones that make features go live:
 **Unlink (private deposit + payout):** `UNLINK_API_KEY`, `UNLINK_APP_ID`, `PRIVATE_PAYOUT_ADDRESS`
 
 **World ID (identity gate, optional):** `WORLDID_APP_ID`, `WORLDID_ACTION`, `WORLDID_RP_ID`,
-`WORLDID_SIGNING_KEY`, `NEXT_PUBLIC_WLD_APP_ID`, `NEXT_PUBLIC_WLD_ACTION`. To demo without a
-real World ID account, set `DEMO_BYPASS_WORLDID=true` + `NEXT_PUBLIC_DEMO_BYPASS_WORLDID=true`.
+`WORLDID_SIGNING_KEY`, `NEXT_PUBLIC_WLD_APP_ID`, `NEXT_PUBLIC_WLD_ACTION`, `NEXT_PUBLIC_WLD_ENV`.
+Set `NEXT_PUBLIC_WLD_ENV=production` for real users (IDKit defaults to production; `staging` only
+for the simulator). To demo without a real World ID account, set `DEMO_BYPASS_WORLDID=true` +
+`NEXT_PUBLIC_DEMO_BYPASS_WORLDID=true`.
 
 **Dynamic wallet (login + wallet funding, optional):** `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID`
 (free Sandbox key from app.dynamic.xyz). Without it, login is hidden and funding stays server-side.
