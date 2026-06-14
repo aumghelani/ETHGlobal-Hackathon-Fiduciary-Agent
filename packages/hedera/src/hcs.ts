@@ -64,6 +64,45 @@ export async function submitInvoiceHash(
   });
 }
 
+// Submit a STRUCTURED agent-decision message to the same shared topic. HCS gives total
+// ordering (sequence numbers), so the topic becomes an immutable, ordered record of which
+// agent underwrote which invoice and why — not just the bare hash. The message is JSON so
+// a reader can parse it; kept compact (HCS messages are size-limited). Returns the seq #.
+// Retried; the caller treats failure as non-fatal (it must not block accept).
+export interface AgentDecisionMessage {
+  type: 'agent_decision';
+  invoiceHash: string | null;
+  agent: string;
+  decision: 'accepted';
+  feePercent: number;
+  discountPercent: number;
+  riskScore: number;
+  // Short human summary of the agent's reasoning (truncated — the message is ordered + audited).
+  summary: string;
+}
+
+export async function submitAgentDecision(
+  msg: AgentDecisionMessage
+): Promise<{ sequenceNumber: number }> {
+  return withRetry(async () => {
+    const topicId = requireTopicId();
+    const client = getClient();
+    // Truncate the summary so the whole JSON stays well within HCS message limits.
+    const compact: AgentDecisionMessage = { ...msg, summary: (msg.summary ?? '').slice(0, 300) };
+    const tx = await new TopicMessageSubmitTransaction()
+      .setTopicId(topicId)
+      .setMessage(JSON.stringify(compact))
+      .execute(client);
+    const receipt = await tx.getReceipt(client);
+    if (receipt.topicSequenceNumber === null || receipt.topicSequenceNumber === undefined) {
+      throw new Error(
+        `Agent-decision submit receipt has no topicSequenceNumber (status: ${receipt.status.toString()}).`
+      );
+    }
+    return { sequenceNumber: receipt.topicSequenceNumber.toNumber() };
+  });
+}
+
 // Check whether a hash is already on the topic, via the Mirror Node REST API.
 // FAILS OPEN: if the mirror node is unreachable (timeout / 5xx), returns false
 // rather than blocking a legitimate upload — we'd rather miss a duplicate than

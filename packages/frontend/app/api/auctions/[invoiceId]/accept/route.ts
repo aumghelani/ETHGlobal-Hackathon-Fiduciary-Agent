@@ -4,6 +4,7 @@ import {
   getClient,
   mintInvoiceToken,
   associateToken,
+  submitAgentDecision,
   PrivateKey,
 } from '@fiduciary/hedera';
 import { deployPool } from '@/lib/arc';
@@ -105,6 +106,26 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     (invoice as any).acceptedAgentName = agentName;
     (invoice as any).status = 'funding';
     store.invoices.set(params.invoiceId, invoice);
+
+    // Record the agent's underwriting decision to the HCS audit topic — a structured,
+    // ORDERED message (sequence-numbered) capturing which agent took this invoice, at what
+    // fee, and why. This runs once (inside the first-mint block). Best-effort + non-fatal.
+    try {
+      const seq = await submitAgentDecision({
+        type: 'agent_decision',
+        invoiceHash: (invoice as any).invoiceHash ?? null,
+        agent: agentName,
+        decision: 'accepted',
+        feePercent: winningBid.feePercent,
+        discountPercent: winningBid.discountPercent,
+        riskScore: winningBid.riskScore,
+        summary: winningBid.reasoning ?? '',
+      });
+      (invoice as any).agentDecisionSeq = seq.sequenceNumber;
+      store.invoices.set(params.invoiceId, invoice);
+    } catch (err) {
+      console.error('[accept] agent-decision HCS submit failed (non-fatal):', err);
+    }
   }
 
   // Deploy a fresh per-invoice pool with a small fundable target (faucet-feasible).
