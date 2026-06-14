@@ -62,24 +62,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sybil resistance (THREAT_MODEL Layer 1): one invoice per unique human. The action
-    // is fixed (factor-invoice), so World ID returns the SAME nullifier for the same person
-    // every time. If we've already seen this nullifier, reject — a new identity is required
-    // to factor again, which is exactly what stops reputation-washing via fresh accounts.
-    // We CHECK here but RECORD only once the invoice is actually created (below), so a human
-    // whose upload is rejected downstream (e.g. duplicate hash) isn't permanently burned.
+    // Personhood-bound reputation (THREAT_MODEL Layer 1). The action is fixed
+    // (factor-invoice), so World ID returns the SAME nullifier for the same human every
+    // time. We do NOT block a repeat — a freelancer legitimately factors MANY invoices.
+    // Instead we bind every invoice to this one human identity (below), so their track
+    // record follows the HUMAN and can't be reset by switching wallets. Without this, the
+    // whole reputation/trust system is defeatable: a freelancer with a bad dispute history
+    // just makes a fresh wallet and underwrites clean again. That is what World ID prevents.
     if (!nullifier) {
-      // A valid v4 proof must carry a nullifier; its absence means we can't enforce
-      // uniqueness, so fail closed rather than silently allow an unbounded identity.
+      // A valid v4 proof must carry a nullifier; its absence means we can't bind reputation
+      // to a real human, so fail closed rather than admit an untracked identity.
       console.error('[invoices] verified proof had no nullifier — rejecting (fail closed).');
       return NextResponse.json(
         { error: 'Identity verification incomplete. Please verify with World ID and try again.' },
-        { status: 403 }
-      );
-    }
-    if (store.nullifiers.has(nullifier)) {
-      return NextResponse.json(
-        { error: 'This person has already factored an invoice. One invoice per verified human.' },
         { status: 403 }
       );
     }
@@ -119,17 +114,27 @@ export async function POST(req: NextRequest) {
 
   const id = randomUUID();
 
-  // Hardcoded freelancer + client trust data for MVP (per ADR-007, no real World ID)
+  // This human's existing reputation (by World ID nullifier), if we've seen them before.
+  // Their factoring history follows the HUMAN, so a freelancer's track record (and any
+  // disputes) carries across every invoice they submit — and can't be reset with a new wallet.
+  const prior = verifiedNullifier ? store.nullifiers.get(verifiedNullifier) : undefined;
+
+  // Freelancer trust data. The dynamic fields are derived from this human's bound history
+  // (verifiedNullifier) so reputation is personhood-anchored; the rest are demo defaults.
   const invoice = {
     id,
     amountUsd: body.amountUsd,
     currency: ['USD', 'EUR', 'GBP'].includes(body.currency) ? body.currency : 'USD',
     daysUntilDue: body.daysUntilDue,
+    // World ID nullifier this invoice is bound to (null when the gate is bypassed for demos).
+    worldIdNullifier: verifiedNullifier ?? null,
     freelancer: {
-      identityVerified: true,
+      identityVerified: !!verifiedNullifier,
       ensSubname: 'maria.fid.eth',
-      successfulInvoices: 5,
-      disputedInvoices: 0,
+      // Successful history = invoices this HUMAN has already factored (personhood-bound),
+      // plus a demo baseline. Disputes likewise follow the human and can't be washed away.
+      successfulInvoices: 5 + (prior?.invoicesFactored ?? 0),
+      disputedInvoices: prior?.disputes ?? 0,
       totalVolumeReceived: 20000,
       averagePaymentDelay: 2,
       accountAgeInDays: 180,
@@ -153,11 +158,16 @@ export async function POST(req: NextRequest) {
   };
 
   store.invoices.set(id, invoice as any);
-  // Now that the invoice is actually created, burn this human's nullifier so they can't
-  // factor a second one. Recorded here (not at verify time) so a human rejected upstream
-  // isn't permanently locked out. store.flush() persists invoices + nullifiers together.
+  // Accrue this invoice to the human's personhood-bound reputation (create the record on
+  // first sight, otherwise increment). This is the load-bearing bit: the count grows with
+  // the HUMAN across every wallet they use, so a bad track record can't be escaped. Recorded
+  // after creation so an upstream rejection doesn't dirty their history.
   if (verifiedNullifier) {
-    store.nullifiers.set(verifiedNullifier, { at: new Date().toISOString() });
+    store.nullifiers.set(verifiedNullifier, {
+      firstSeenAt: prior?.firstSeenAt ?? new Date().toISOString(),
+      invoicesFactored: (prior?.invoicesFactored ?? 0) + 1,
+      disputes: prior?.disputes ?? 0,
+    });
   }
   await store.flush(); // ensure the writes land before the serverless function returns
 

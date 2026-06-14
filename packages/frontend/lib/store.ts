@@ -17,14 +17,27 @@ type InvoiceRecord = Invoice & {
   investors: any[];
 };
 
+// A human's reputation, tied to their World ID nullifier (not their wallet). This is what
+// makes personhood load-bearing: a freelancer's track record follows the unique HUMAN, so
+// disputes can't be escaped by spinning up a fresh wallet (reputation-washing). The same
+// person can factor MANY invoices — they all accrue to this one identity.
+export type HumanReputation = {
+  firstSeenAt: string;
+  invoicesFactored: number;
+  // Reserved for dispute tracking (a disputed settlement would increment this), so a bad
+  // actor's history is permanent and visible across all their invoices.
+  disputes: number;
+};
+
 export type Store = {
   invoices: PersistentMap<InvoiceRecord>;
   bids: PersistentMap<Bid[]>;
   agents: PersistentMap<Agent>;
-  // World ID Sybil resistance: the set of World ID nullifier hashes that have already
-  // factored an invoice. Keyed by nullifier_hash; presence means "this unique human has
-  // already been through". Enforces one-per-human (THREAT_MODEL Layer 1).
-  nullifiers: PersistentMap<{ at: string }>;
+  // World ID personhood: maps each unique human (by nullifier_hash) to their reputation.
+  // Presence does NOT block a second invoice (a person can factor many); it ties every
+  // invoice that human factors to ONE durable identity so reputation can't be reset by
+  // switching wallets. THREAT_MODEL Layer 1.
+  nullifiers: PersistentMap<HumanReputation>;
   flush: () => Promise<void>;
 };
 
@@ -139,7 +152,7 @@ function buildStore(): Store {
   const invoices = new PersistentMap<InvoiceRecord>('fid:invoices');
   const bids = new PersistentMap<Bid[]>('fid:bids');
   const agents = new PersistentMap<Agent>('fid:agents');
-  const nullifiers = new PersistentMap<{ at: string }>('fid:nullifiers');
+  const nullifiers = new PersistentMap<HumanReputation>('fid:nullifiers');
   return {
     invoices,
     bids,
