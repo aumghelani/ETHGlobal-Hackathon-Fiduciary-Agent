@@ -12,7 +12,7 @@ import { withRetry } from '@/lib/retry';
 import { isCircleConfigured, provisionAgentWallet, setSpendingPolicy } from '@/lib/circleAgentWallet';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
@@ -193,6 +193,7 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     }
   }
 
+  await store.flush(); // persist all the mint/deploy/associate/provision writes
   const hashscanUrl = `https://hashscan.io/testnet/token/${tokenId}`;
   return NextResponse.json({
     tokenId,

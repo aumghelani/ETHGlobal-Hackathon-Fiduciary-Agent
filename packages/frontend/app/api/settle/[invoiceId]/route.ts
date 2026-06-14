@@ -11,7 +11,7 @@ import { privatePayoutOnUnlink } from '@/lib/unlink';
 const gap = () => new Promise((r) => setTimeout(r, 2000));
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
@@ -108,6 +108,7 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     (invoice as any).settleTxHash = arcTxHash;
     (invoice as any).settledAt = new Date().toISOString();
     store.invoices.set(params.invoiceId, invoice);
+    await store.flush();
     return NextResponse.json(
       {
         error: 'Payment settled, but the distribution schedule could not be completed.',
@@ -169,6 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
   (invoice as any).scheduleExecTxHash = scheduleExecTxId;
   (invoice as any).settledAt = new Date().toISOString();
   store.invoices.set(params.invoiceId, invoice);
+  await store.flush(); // persist settled state + reputation before responding
 
   // Symbolic dollar figures for the cascade UI (on-chain amounts are small USDC).
   const winningBid = (store.bids.get(params.invoiceId) || []).find(

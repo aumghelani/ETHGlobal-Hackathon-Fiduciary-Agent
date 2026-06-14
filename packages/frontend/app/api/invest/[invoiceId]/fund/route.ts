@@ -3,7 +3,7 @@ import { getStore } from '@/lib/store';
 import { fundPool, getPoolState } from '@/lib/arc';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 

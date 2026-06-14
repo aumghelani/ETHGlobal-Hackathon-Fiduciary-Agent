@@ -6,7 +6,7 @@ import { getStore } from '@/lib/store';
 // holds whatever flows ran). Degrades to zeros/null on an empty store, so the widget
 // renders gracefully before any activity.
 export async function GET() {
-  const store = getStore();
+  const store = await getStore();
   const invoices = Array.from(store.invoices.values()) as any[];
 
   const tokenized = invoices.filter((i) => i.tokenId);

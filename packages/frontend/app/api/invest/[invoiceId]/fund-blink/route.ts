@@ -7,7 +7,7 @@ import { blinkInvestorDeposit } from '@/lib/blink';
 // NOT advance the on-chain pool. Today it returns the mock; the seam to wire the real
 // @swype-org/deposit SDK lives in lib/blink.ts. Recorded on the invoice for the UI.
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
       { amountUsd: dollars, transferId: result.transferId, chainId: result.chainId, at: new Date().toISOString() },
     ];
     store.invoices.set(params.invoiceId, invoice);
+    await store.flush();
     return NextResponse.json({
       status: result.status,
       amountUsd: dollars,

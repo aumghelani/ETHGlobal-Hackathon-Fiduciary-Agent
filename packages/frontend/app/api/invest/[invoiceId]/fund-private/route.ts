@@ -4,7 +4,7 @@ import { getPoolState, fundPool } from '@/lib/arc';
 import { privateDepositOnUnlink } from '@/lib/unlink';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
@@ -106,6 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     },
   ];
   store.invoices.set(params.invoiceId, invoice);
+  await store.flush();
 
   // The pool now reflects this deposit too; the client refreshes for the exact figure.
   const totalRaisedUsd = Math.min(net, poolMappedUsd + dollars);

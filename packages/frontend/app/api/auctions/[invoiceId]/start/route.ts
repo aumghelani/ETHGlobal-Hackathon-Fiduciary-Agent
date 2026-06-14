@@ -3,7 +3,7 @@ import { getStore } from '@/lib/store';
 import { generateBid } from '@fiduciary/agents';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
   if (!invoice) {
     return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -37,12 +37,13 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
   store.bids.set(params.invoiceId, bids);
+  await store.flush();
 
   return NextResponse.json({ bids, fromCache: false });
 }
 
 export async function GET(req: NextRequest, { params }: { params: { invoiceId: string } }) {
-  const store = getStore();
+  const store = await getStore();
   const bids = store.bids.get(params.invoiceId) || [];
   return NextResponse.json({ bids });
 }

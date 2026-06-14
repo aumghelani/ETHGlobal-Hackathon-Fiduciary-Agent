@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
   }
 
   const id = randomUUID();
-  const store = getStore();
+  const store = await getStore();
 
   // Hardcoded freelancer + client trust data for MVP (per ADR-007, no real World ID)
   const invoice = {
@@ -126,12 +126,13 @@ export async function POST(req: NextRequest) {
   };
 
   store.invoices.set(id, invoice as any);
+  await store.flush(); // ensure the write lands before the serverless function returns
 
   return NextResponse.json({ id, invoice }, { status: 201 });
 }
 
 export async function GET() {
-  const store = getStore();
+  const store = await getStore();
   // Enrich each invoice with its accepted agent's fee% (from the winning bid) so the
   // marketplace can show an indicative yield without an extra fetch per card.
   const invoices = Array.from(store.invoices.entries()).map(([id, inv]) => {
