@@ -10,6 +10,11 @@ import { privatePayoutOnUnlink } from '@/lib/unlink';
 // gives the network a beat between txns (per demo tuning).
 const gap = () => new Promise((r) => setTimeout(r, 2000));
 
+// Settle chains Arc settlement → Hedera schedule create+execute → private payout, with
+// retries and 2s gaps — well over Vercel's default 10s. 60s is the Hobby ceiling; without
+// this the function is killed mid-flight (Arc would settle but the response would 502).
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);

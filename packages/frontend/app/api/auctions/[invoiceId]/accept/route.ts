@@ -11,6 +11,11 @@ import { deployPool } from '@/lib/arc';
 import { withRetry } from '@/lib/retry';
 import { isCircleConfigured, provisionAgentWallet, setSpendingPolicy } from '@/lib/circleAgentWallet';
 
+// This route chains several on-chain ops (HTS mint → Arc pool deploy → token associate),
+// each with retries — it can take far longer than Vercel's default 10s function limit.
+// 60s is the Hobby-plan ceiling; without this the function is killed mid-flight → 502.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);

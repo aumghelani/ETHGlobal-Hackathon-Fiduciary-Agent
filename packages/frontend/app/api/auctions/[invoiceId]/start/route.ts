@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
 import { generateBid } from '@fiduciary/agents';
 
+// Generates competing LLM agent bids (multiple model calls) — can exceed Vercel's
+// default 10s function limit. 60s is the Hobby ceiling.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);

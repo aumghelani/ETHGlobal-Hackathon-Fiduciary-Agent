@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
 import { blinkInvestorDeposit } from '@/lib/blink';
 
+// Kept consistent with the other on-chain fund routes (the default 10s is usually enough here).
+export const maxDuration = 60;
+
 // Investor funding via Blink (Base Sepolia). STUB-WITH-SEAM: the real Blink deposit runs
 // on Base Sepolia (not Arc), so this is a SEPARATE rail from the Arc InvoicePool — it does
 // NOT advance the on-chain pool. Today it returns the mock; the seam to wire the real

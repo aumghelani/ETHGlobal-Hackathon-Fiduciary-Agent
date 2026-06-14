@@ -3,6 +3,9 @@ import { getStore } from '@/lib/store';
 import { getPoolState, fundPool } from '@/lib/arc';
 import { privateDepositOnUnlink } from '@/lib/unlink';
 
+// On-chain Arc fund + Unlink private deposit with retries — can exceed the default 10s.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = await getStore();
   const invoice = store.invoices.get(params.invoiceId);
