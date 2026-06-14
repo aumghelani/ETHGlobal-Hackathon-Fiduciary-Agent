@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
 import { getPoolState } from '@/lib/arc';
 import { calculateFreelancerTrust } from '@fiduciary/agents';
+import { dueInDays } from '@/lib/dueDate';
 
 export async function GET(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = await getStore();
@@ -52,6 +53,8 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     clientName: (invoice as any).clientName,
     amountUsd: invoice.amountUsd,
     daysUntilDue: invoice.daysUntilDue,
+    // Live countdown (from createdAt), so "pays in N days" decreases instead of staying frozen.
+    dueInDays: dueInDays((invoice as any).createdAt, invoice.daysUntilDue),
     netToFreelancer: winningBid?.netToFreelancer ?? null,
     agentName: (invoice as any).acceptedAgentName ?? null,
     feePercent: winningBid?.feePercent ?? null,

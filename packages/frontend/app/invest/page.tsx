@@ -10,6 +10,7 @@ type InvoiceListItem = {
   clientName?: string;
   amountUsd: number;
   daysUntilDue: number;
+  dueInDays?: number;
   status?: string;
   acceptedAgentName?: string;
   feePercent?: number | null;
@@ -120,7 +121,7 @@ export default function InvestPage() {
                     <div className="mt-auto space-y-1.5 pt-4 text-xs text-fg-muted">
                       <div className="flex items-center gap-1.5">
                         <Clock size={12} className="text-fg-subtle" />
-                        Pays in {inv.daysUntilDue} days
+                        Pays in {inv.dueInDays ?? inv.daysUntilDue} days
                       </div>
                       {inv.acceptedAgentName && (
                         <div className="flex items-center gap-1.5">

@@ -46,7 +46,7 @@ Three deterministic scoring functions ([`packages/agents/src/reputation.ts`](pac
 
 **Agent score (0 to 5)** = volume-weighted track record (log-scaled, max 3.5) + success rate (max 1.0) + activity/recency (max 0.5). Updates on every real settlement. This is what drives the fee inversion.
 
-**Freelancer trust (0 to 1)** = identity verification + ENS subname + a quadratic track-record bonus (disputes hurt a lot) + client diversity + account age (Sybil resistance). A freelancer raises it by completing invoices cleanly, working with more clients, and building history.
+**Freelancer trust (0 to 1)** = identity verification + ENS subname + a quadratic track-record bonus (disputes hurt a lot) + client diversity + account age (Sybil resistance). A freelancer raises it by completing invoices cleanly, working with more clients, and building history. This track record is bound to the freelancer's World ID nullifier, so it follows the human and cannot be reset by creating a new wallet.
 
 **Client trust (0 to 1)** = verified-business + payment reliability (on-time / late / unpaid) + volume. Feeds the agent's risk assessment of the payer.
 
@@ -72,7 +72,7 @@ Six designed layers. Three are **real and on-chain** today; the rest are designe
 
 | Layer | Status | What's built |
 |---|---|---|
-| 1. Identity | 🟢 Partial | **World ID** proof-of-personhood gate (real, v4) on upload. ENS subname + company registry = roadmap. |
+| 1. Identity | 🟢 **Real** | **World ID** v4 proof-of-personhood, verified server-side, on upload. The proof's nullifier binds a freelancer's reputation to a unique human, so a poor track record can't be reset by switching wallets. A person can still factor many invoices; their history follows the human. ENS subname + company registry = roadmap. |
 | 2. Contract authenticity | ⚪ Mocked | DKIM/zkTLS email proof: UI badge today, roadmap. |
 | 3. Double-spend prevention | 🟢 **Real** | Invoice hash → **Hedera HCS** → duplicate uploads rejected. |
 | 4. AI credit assessment | 🟢 **Real** | The agent underwrites every deal from freelancer/client trust + LLM reasoning. |
@@ -136,6 +136,7 @@ Live: **https://cashmeifyoucan.us** (deployed on Vercel) · Video: _[Loom URL]_
 
 ### Docs
 
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): system + end-to-end flow diagrams and why each chain.
 - [`DEPLOY.md`](DEPLOY.md): Vercel deployment guide and environment-variable checklist.
 
 ## License

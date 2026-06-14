@@ -21,6 +21,7 @@ type InvestData = {
   clientName: string;
   amountUsd: number;
   daysUntilDue: number;
+  dueInDays?: number;
   netToFreelancer: number | null;
   agentName: string | null;
   feePercent: number | null;
@@ -209,7 +210,7 @@ export default function InvestInvoicePage() {
       <Card className="mt-5 divide-y divide-line">
         <Row label="Client" value={data.clientName} />
         <Row label="Invoice amount" value={<Money usd={data.amountUsd} />} />
-        <Row label="Payment expected" value={`${data.daysUntilDue} days`} />
+        <Row label="Payment expected" value={`${data.dueInDays ?? data.daysUntilDue} days`} />
         {data.agentName && data.feePercent !== null && (
           <Row label="Managed by" value={`${data.agentName} · ${data.feePercent}% fee`} />
         )}
@@ -264,7 +265,7 @@ export default function InvestInvoicePage() {
             <p className="text-sm font-semibold text-fg">Investment confirmed</p>
             <p className="mt-0.5 text-sm text-fg-muted">
               You get your principal plus yield back when the client settles, in about{' '}
-              <span className="font-medium text-fg">{data.daysUntilDue} days</span>. Track it in your{' '}
+              <span className="font-medium text-fg">{data.dueInDays ?? data.daysUntilDue} days</span>. Track it in your{' '}
               <Link href="/dashboard" className="font-medium text-brand hover:underline">dashboard</Link>.
             </p>
           </div>
@@ -337,21 +338,30 @@ export default function InvestInvoicePage() {
             {funding ? 'Funding…' : 'Buy a piece'}
           </Button>
 
-          {/* Alternative rail: fund with Blink (Base Sepolia). Same size as the wallet button. */}
+          {/* Alternative rail: fund with Blink. Clearly labeled as a preview/stub — Blink runs
+              on Base Sepolia (not Arc) and is not wired to the live pool; shown for the flow. */}
           {blinkDone ? (
             <p className="flex items-center justify-center gap-1.5 text-sm text-brand">
-              <CheckCircle2 size={14} /> Funded with Blink ✓
+              <CheckCircle2 size={14} /> Funded with Blink (preview) ✓
             </p>
           ) : (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleFundWithBlink}
-              disabled={funding}
-            >
-              <Zap size={15} className="mr-2" /> Fund with Blink
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleFundWithBlink}
+                disabled={funding}
+              >
+                <Zap size={15} className="mr-2" /> Fund with Blink
+                <span className="ml-1.5 rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">
+                  Preview
+                </span>
+              </Button>
+              <p className="text-center text-[11px] text-fg-subtle">
+                Blink runs on Base Sepolia, not Arc, so this is a preview and does not fund the live pool.
+              </p>
+            </>
           )}
 
           {/* Real client-side funding from a connected wallet (Dynamic) — only when enabled.

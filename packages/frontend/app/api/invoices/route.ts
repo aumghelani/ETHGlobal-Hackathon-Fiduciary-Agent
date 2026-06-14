@@ -3,6 +3,7 @@ import { getStore } from '@/lib/store';
 import { randomUUID } from 'crypto';
 import { submitInvoiceHash, isHashAlreadySubmitted } from '@fiduciary/hedera';
 import { verifyProof } from '@/lib/worldid';
+import { dueInDays } from '@/lib/dueDate';
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -223,6 +224,9 @@ export async function GET(req: NextRequest) {
       // Net advanced to the freelancer = what investors actually fund against (the dashboard
       // uses this as the denominator for each investor's proportional payout).
       netToFreelancer: winningBid?.netToFreelancer ?? null,
+      // Live days-until-due (counts down from the original term), so the UI never shows a
+      // frozen "60 days" on an aging or settled invoice.
+      dueInDays: dueInDays((inv as any).createdAt, (inv as any).daysUntilDue),
       investments,
     };
   });
