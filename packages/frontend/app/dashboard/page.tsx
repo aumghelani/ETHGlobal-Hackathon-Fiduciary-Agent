@@ -20,6 +20,7 @@ type Invoice = {
   acceptedAgentName?: string;
   feePercent?: number | null;
   agentEarnings?: number | null;
+  netToFreelancer?: number | null;
   createdByAddress?: string | null;
   investments?: Investment[];
 };
@@ -37,13 +38,16 @@ export default function DashboardPage() {
   const [loaded, setLoaded] = useState(false);
   const [role, setRole] = useState<Role>('freelancer');
 
+  // Pass the connected wallet as ?me so the API reveals MY private investment amounts to me
+  // (and only me). Re-fetch when the wallet connects/changes.
   useEffect(() => {
-    fetch('/api/invoices')
+    const url = me ? `/api/invoices?me=${encodeURIComponent(me)}` : '/api/invoices';
+    fetch(url)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => setInvoices(d.invoices ?? []))
       .catch(() => {})
       .finally(() => setLoaded(true));
-  }, []);
+  }, [me]);
 
   // Is this invoice tied to MY connected wallet (created it, or funded it)?
   const isMine = (i: Invoice): boolean => {
@@ -52,15 +56,16 @@ export default function DashboardPage() {
     return (i.investments ?? []).some((iv) => iv.address === me);
   };
   // What I received back as an investor when this invoice settled (my proportional share of
-  // the investor payout). Only my PUBLIC deposits have a visible amount.
+  // the investor payout). Includes my private deposits too — their amount is revealed to ME
+  // (the owner) by the API, so I can total my own stake whether public or private.
   const myReceived = (i: Invoice): number => {
     if (!me || i.status !== 'settled') return 0;
-    const myPublic = (i.investments ?? []).filter((iv) => iv.address === me && !iv.private);
-    const myStake = myPublic.reduce((s, iv) => s + (iv.amountUsd ?? 0), 0);
+    const mine = (i.investments ?? []).filter((iv) => iv.address === me);
+    const myStake = mine.reduce((s, iv) => s + (iv.amountUsd ?? 0), 0);
     if (myStake <= 0) return 0;
     // Investors split (amount - agent fee) proportionally to their stake in the net pool.
     const investorPool = i.amountUsd - (i.agentEarnings ?? 0);
-    const net = i.amountUsd; // funding is denominated against net-to-freelancer (~amount)
+    const net = i.netToFreelancer ?? i.amountUsd; // funding is denominated against net-to-freelancer
     return net > 0 ? Math.round((myStake / net) * investorPool * 100) / 100 : 0;
   };
 

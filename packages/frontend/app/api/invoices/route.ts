@@ -176,8 +176,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ id, invoice }, { status: 201 });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const store = await getStore();
+  // The viewer's connected wallet (lower-cased), passed as ?me=0x... by the client. Used to
+  // reveal a PRIVATE investment's amount ONLY to the wallet that made it — everyone else
+  // still gets it nulled. This keeps private deposits sealed from other investors while
+  // letting an investor see their own history.
+  const meParam = new URL(req.url).searchParams.get('me');
+  const me = meParam ? meParam.toLowerCase() : null;
   // Enrich each invoice with its accepted agent's fee% (from the winning bid) so the
   // marketplace can show an indicative yield without an extra fetch per card.
   const invoices = Array.from(store.invoices.entries()).map(([id, inv]) => {
@@ -185,16 +191,20 @@ export async function GET() {
     const winningBid = acceptedName
       ? (store.bids.get(id) || []).find((b) => b.agentName === acceptedName)
       : undefined;
-    // Sanitize investments for the client: expose the investor address (so the dashboard
-    // can highlight "mine") + amount for PUBLIC deposits only. Private deposit amounts are
-    // never sent (Unlink privacy) — only that the address participated.
+    // Sanitize investments for the client. Public deposit amounts are visible to everyone.
+    // A PRIVATE deposit's amount is revealed ONLY to the wallet that made it (me === its
+    // address); to every other viewer it is nulled, so private positions stay sealed while
+    // an investor can still see their own private history.
     const rawInvestments = (((inv as any).investments ?? []) as Array<any>);
-    const investments = rawInvestments.map((iv) => ({
-      address: iv.address ?? null,
-      amountUsd: iv.private ? null : iv.amountUsd,
-      private: !!iv.private,
-      at: iv.at,
-    }));
+    const investments = rawInvestments.map((iv) => {
+      const ownedByMe = !!me && typeof iv.address === 'string' && iv.address.toLowerCase() === me;
+      return {
+        address: iv.address ?? null,
+        amountUsd: iv.private && !ownedByMe ? null : iv.amountUsd,
+        private: !!iv.private,
+        at: iv.at,
+      };
+    });
     // Strip privacy-sensitive raw fields before spreading: private deposit amounts (Unlink
     // privacy), the per-invoice blink amounts, and the World ID nullifier (a stable
     // personhood id that must not be broadcast). The sanitized `investments` above is what
@@ -210,6 +220,9 @@ export async function GET() {
       ...safe,
       feePercent: winningBid?.feePercent ?? null,
       agentEarnings: winningBid?.agentEarnings ?? null,
+      // Net advanced to the freelancer = what investors actually fund against (the dashboard
+      // uses this as the denominator for each investor's proportional payout).
+      netToFreelancer: winningBid?.netToFreelancer ?? null,
       investments,
     };
   });

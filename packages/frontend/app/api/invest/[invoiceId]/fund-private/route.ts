@@ -98,9 +98,14 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     console.error('[fund-private] on-chain pool top-up failed (non-fatal):', err);
   }
 
+  // Tie this private deposit to the investor's wallet so THEY (and only they) can see it in
+  // their own dashboard. The address lets us reveal the amount to its owner while keeping it
+  // sealed from everyone else (see the per-viewer reveal in /api/invoices GET).
+  const investorAddress = typeof body?.investorAddress === 'string' ? body.investorAddress : null;
   (invoice as any).privateDeposits = [
     ...privateDeposits,
     {
+      address: investorAddress,
       amountUsd: dollars,
       amountUsdc: amountUsdc.toString(),
       txHash,
@@ -108,6 +113,17 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
       depositedAt: new Date().toISOString(),
     },
   ];
+  // Also record it in the unified investments feed (marked private) so the dashboard's
+  // "mine" detection and per-viewer reveal work the same way as public deposits.
+  const investments = ((invoice as any).investments ?? []) as Array<Record<string, unknown>>;
+  investments.push({
+    address: investorAddress,
+    amountUsd: dollars,
+    private: true,
+    txHash,
+    at: new Date().toISOString(),
+  });
+  (invoice as any).investments = investments;
   store.invoices.set(params.invoiceId, invoice);
   await store.flush();
 
