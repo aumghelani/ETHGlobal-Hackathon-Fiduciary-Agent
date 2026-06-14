@@ -78,5 +78,7 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
       : null,
     // Display currency (settlement stays USDC under the hood).
     currency: (invoice as any).currency ?? 'USD',
+    // Public pool contract address (for wallet-side funding via Dynamic).
+    poolAddress,
   });
 }

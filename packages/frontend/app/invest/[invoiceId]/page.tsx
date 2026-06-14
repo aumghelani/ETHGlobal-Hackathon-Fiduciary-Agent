@@ -10,6 +10,8 @@ import { Card } from '@/components/ui/card';
 import { Money, AnimatedNumber } from '@/components/Money';
 import { HcsAuditLink } from '@/components/HcsAuditLink';
 import { AgentWalletLink } from '@/components/AgentWalletLink';
+import { DYNAMIC_ENABLED } from '@/components/DynamicProvider';
+import { WalletFundButton } from '@/components/WalletFundButton';
 
 // Investor KYC gate is on only when explicitly enabled; default keeps funding open.
 const KYC_ENABLED = process.env.NEXT_PUBLIC_KYC_ENABLED === 'true';
@@ -34,6 +36,7 @@ type InvestData = {
   agentWalletAddress: string | null;
   privatePayoutTxHash: string | null;
   currency?: 'USD' | 'EUR' | 'GBP';
+  poolAddress?: string;
 };
 
 export default function InvestInvoicePage() {
@@ -323,6 +326,20 @@ export default function InvestInvoicePage() {
             >
               or fund with Blink instead
             </button>
+          )}
+
+          {/* Real client-side funding from a connected wallet (Dynamic) — only when enabled.
+              Sends the pool-scale USDC amount mapped from the dollar input. */}
+          {DYNAMIC_ENABLED && data.poolAddress && (
+            <WalletFundButton
+              poolAddress={data.poolAddress}
+              amountUsdc={
+                Number(share) > 0 && net > 0 ? (Number(share) / net) * data.pool.target : 0
+              }
+              onFunded={() => {
+                void refresh();
+              }}
+            />
           )}
 
           {error && <p className="text-sm text-danger">{error}</p>}
