@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ============================================================================
-   Fiduciary design tokens — semantic, theme-aware (light + dark mode 2.0).
+   cashmeifyoucan design tokens: semantic, theme-aware (light + dark mode 2.0).
    Components reference these via Tailwind's bg-surface / text-fg / border-line
    etc., so a single theme switch reskins the whole app.
    ============================================================================ */

@@ -20,8 +20,8 @@ export function NavBar() {
     <nav className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-fg">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-on-brand">F</span>
-          Fiduciary
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-on-brand">C</span>
+          cashmeifyoucan
         </Link>
 
         <div className="flex items-center gap-1 sm:gap-2">
@@ -46,11 +46,11 @@ export function NavBar() {
           {/* Dynamic login/connect — only when configured. */}
           {DYNAMIC_ENABLED && <WalletButton />}
 
-          {/* Pro mode — reveals the crypto layer everywhere. */}
+          {/* Dev mode reveals the on-chain layer (USDC, tx hashes, explorer links) everywhere. */}
           <button
             onClick={toggleProMode}
             aria-pressed={proMode}
-            title="Pro mode — reveal on-chain details"
+            title="Dev mode: reveal on-chain details"
             className={
               'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ' +
               (proMode
@@ -59,7 +59,7 @@ export function NavBar() {
             }
           >
             <Sparkles size={13} />
-            Pro
+            Dev
           </button>
 
           <button

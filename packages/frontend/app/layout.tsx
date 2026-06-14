@@ -11,7 +11,7 @@ const sora = Sora({ subsets: ["latin"], variable: "--font-display", weight: ["60
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Fiduciary — Get paid today, not in 60 days",
+  title: "cashmeifyoucan · Get paid today, not in 60 days",
   description: "AI agents compete to factor your invoice. The better the agent, the less it charges.",
 };
 
