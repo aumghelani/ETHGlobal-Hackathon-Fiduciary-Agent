@@ -4,6 +4,7 @@ import { getPoolState, settlePool } from '@/lib/arc';
 import { scheduleDistribution, executeSchedule, PrivateKey } from '@fiduciary/hedera';
 import { calculateAgentScore } from '@fiduciary/agents';
 import { withRetry } from '@/lib/retry';
+import { privatePayoutOnUnlink } from '@/lib/unlink';
 
 // Small spacing between sequential on-chain operations — eases RPC pressure and
 // gives the network a beat between txns (per demo tuning).
@@ -118,6 +119,34 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
+  // Step 3.5 — Private payout (Track E). If this invoice had any private (Unlink) deposits,
+  // withdraw the aggregate private USDC out of the shared privacy position to a custodian
+  // address (PRIVATE_PAYOUT_ADDRESS, default operator). NOT per-investor — privateDeposits
+  // store no recipient (privacy). BEST-EFFORT + non-blocking: Arc already settled, so a
+  // payout failure must not break settlement (mirrors the Circle-provision pattern). ADR-024.
+  const privateDeposits = ((invoice as any).privateDeposits ?? []) as Array<{ amountUsdc?: string }>;
+  let privatePayoutTxHash: string | null = null;
+  if (privateDeposits.length > 0) {
+    try {
+      const totalPrivateUsdc = privateDeposits.reduce(
+        (s, p) => s + (p.amountUsdc ? BigInt(p.amountUsdc) : 0n),
+        0n
+      );
+      if (totalPrivateUsdc > 0n) {
+        const recipient = process.env.PRIVATE_PAYOUT_ADDRESS || process.env.FREELANCER_ADDRESS!;
+        const { txHash } = await privatePayoutOnUnlink({
+          recipientEvmAddress: recipient,
+          amountUsdc: totalPrivateUsdc,
+        });
+        privatePayoutTxHash = txHash;
+        (invoice as any).privatePayoutTxHash = txHash;
+        store.invoices.set(params.invoiceId, invoice);
+      }
+    } catch (err) {
+      console.error('[settle] private payout failed (non-fatal):', err);
+    }
+  }
+
   // Step 4 — Reputation tick (in-memory). Activates calculateAgentScore().
   const agent = [...store.agents.values()].find(
     (a) => a.name === (invoice as any).acceptedAgentName
@@ -157,5 +186,8 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     agentReputationAfter,
     distributedToAgentUsd,
     distributedToInvestorsUsd,
+    // Private payout (Track E) — null if there were no private deposits.
+    privatePayoutTxHash,
+    privatePayoutUrl: privatePayoutTxHash ? `https://testnet.arcscan.app/tx/${privatePayoutTxHash}` : null,
   });
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
-import { getPoolState } from '@/lib/arc';
+import { getPoolState, fundPool } from '@/lib/arc';
 import { privateDepositOnUnlink } from '@/lib/unlink';
 
 export async function POST(req: NextRequest, { params }: { params: { invoiceId: string } }) {
@@ -44,13 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     return NextResponse.json({ error: 'This invoice cannot be funded.' }, { status: 409 });
   }
   const privateDeposits = ((invoice as any).privateDeposits ?? []) as Array<{ amountUsd: number }>;
-  const privateRaisedUsd = privateDeposits.reduce((s, p) => s + p.amountUsd, 0);
-  const publicMappedUsd = net * (before.raised / before.target);
-  const displayedTotalUsd = publicMappedUsd + privateRaisedUsd;
-
-  // Remaining against the COMBINED displayed total (public + private). No top-off:
-  // private money never fills the on-chain pool, so reject overshoot outright.
-  const remainingDollars = Math.max(0, net - displayedTotalUsd);
+  // Cap against the on-chain pool only — private deposits ALSO top up the pool (ADR-024),
+  // so before.raised already reflects all prior funding (public + private). Don't add
+  // private again (double-count).
+  const poolMappedUsd = net * (before.raised / before.target);
+  const remainingDollars = Math.max(0, net - poolMappedUsd);
   const cap = Math.ceil(remainingDollars);
   if (dollars > cap) {
     return NextResponse.json(
@@ -80,12 +78,36 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
+  // Reflect the SAME amount into the on-chain Arc pool so the pool can reach target and
+  // settle() works (the contract requires on-chain funded==true; private money alone never
+  // fills it). Per-investor who/how-much stays private — only the AGGREGATE moves on-chain.
+  // Best-effort: a top-up failure doesn't undo the recorded private deposit. ADR-024.
+  // Snap to the pool's remaining capacity to avoid over-depositing past target.
+  let poolTopUpTxHash: string | null = null;
+  try {
+    const remainingUsdc = before.target - before.raised;
+    const wantUsdc = Number(amountUsdc) / 1_000_000;
+    const depositUsdc = Math.min(wantUsdc, remainingUsdc);
+    if (depositUsdc > 0 && Math.round(depositUsdc * 1_000_000) > 0) {
+      ({ txHash: poolTopUpTxHash } = await fundPool(poolAddress, depositUsdc));
+    }
+  } catch (err) {
+    console.error('[fund-private] on-chain pool top-up failed (non-fatal):', err);
+  }
+
   (invoice as any).privateDeposits = [
     ...privateDeposits,
-    { amountUsd: dollars, amountUsdc: amountUsdc.toString(), txHash, depositedAt: new Date().toISOString() },
+    {
+      amountUsd: dollars,
+      amountUsdc: amountUsdc.toString(),
+      txHash,
+      poolTopUpTxHash,
+      depositedAt: new Date().toISOString(),
+    },
   ];
   store.invoices.set(params.invoiceId, invoice);
 
-  const totalRaisedUsd = publicMappedUsd + privateRaisedUsd + dollars;
+  // The pool now reflects this deposit too; the client refreshes for the exact figure.
+  const totalRaisedUsd = Math.min(net, poolMappedUsd + dollars);
   return NextResponse.json({ txHash, totalRaisedUsd });
 }

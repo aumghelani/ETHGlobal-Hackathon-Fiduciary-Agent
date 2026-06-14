@@ -50,13 +50,10 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
-  // Cap against the COMBINED displayed total (on-chain pool + prior private deposits),
-  // matching the private route — otherwise a public buy after private deposits could push
-  // the displayed total past 100%.
-  const privateDeposits = ((invoice as any).privateDeposits ?? []) as Array<{ amountUsd: number }>;
-  const privateRaisedUsd = privateDeposits.reduce((s, p) => s + p.amountUsd, 0);
-  const publicMappedUsd = net * (before.raised / before.target);
-  const remainingDollars = Math.max(0, net - (publicMappedUsd + privateRaisedUsd));
+  // Cap against the on-chain pool only. Private (Unlink) deposits ALSO top up the pool
+  // (ADR-024), so before.raised already reflects private money — don't subtract it again
+  // (that would double-count). This keeps the displayed total ≤ net AND lets the pool fill.
+  const remainingDollars = net * (1 - before.raised / before.target);
   const cap = Math.ceil(remainingDollars);
   if (dollars > cap) {
     return NextResponse.json(

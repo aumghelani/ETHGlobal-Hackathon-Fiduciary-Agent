@@ -32,15 +32,15 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
   const privateRaisedUsd = privateDeposits.reduce((s, p) => s + p.amountUsd, 0);
   const privateInvestorCount = privateDeposits.length;
 
-  // Public deposits go straight to the InvoicePool (not tracked per-investor in
-  // the store); count as one public participant when the pool has any funding.
-  // Guard target>0 (a fresh/misconfigured pool could read 0 → divide-by-zero/Infinity).
-  const publicMappedUsd = pool.target > 0 ? net * (pool.raised / pool.target) : 0;
-  const publicInvestorCount = pool.raised > 0 ? 1 : 0;
+  // The on-chain pool now reflects BOTH public and private money (private deposits also
+  // top up the pool, ADR-024), so the pool-mapped dollars ARE the combined total — don't
+  // add privateRaisedUsd again (double-count). Guard target>0 (avoid divide-by-zero).
+  const poolMappedUsd = pool.target > 0 ? net * (pool.raised / pool.target) : 0;
+  // A public participant exists when the pool has more funding than the private portion.
+  const publicInvestorCount = poolMappedUsd - privateRaisedUsd > 1 ? 1 : 0;
 
-  // Cap at net so the UI never shows >100% funded (an over-funded pool, or public+private
-  // drift, could otherwise push the displayed total past the invoice's net).
-  const displayedTotalUsd = Math.min(net, publicMappedUsd + privateRaisedUsd);
+  // Cap at net so the UI never shows >100% funded.
+  const displayedTotalUsd = Math.min(net, poolMappedUsd);
 
   // Symbolic settled-state figures (the dollar story the UI narrates). Mirrors the
   // /settle route's split: agent earns its fee, investors receive the remainder.
