@@ -21,6 +21,10 @@ export type Store = {
   invoices: PersistentMap<InvoiceRecord>;
   bids: PersistentMap<Bid[]>;
   agents: PersistentMap<Agent>;
+  // World ID Sybil resistance: the set of World ID nullifier hashes that have already
+  // factored an invoice. Keyed by nullifier_hash; presence means "this unique human has
+  // already been through". Enforces one-per-human (THREAT_MODEL Layer 1).
+  nullifiers: PersistentMap<{ at: string }>;
   flush: () => Promise<void>;
 };
 
@@ -126,12 +130,14 @@ function buildStore(): Store {
   const invoices = new PersistentMap<InvoiceRecord>('fid:invoices');
   const bids = new PersistentMap<Bid[]>('fid:bids');
   const agents = new PersistentMap<Agent>('fid:agents');
+  const nullifiers = new PersistentMap<{ at: string }>('fid:nullifiers');
   return {
     invoices,
     bids,
     agents,
+    nullifiers,
     flush: async () => {
-      await Promise.all([invoices.flush(), bids.flush(), agents.flush()]);
+      await Promise.all([invoices.flush(), bids.flush(), agents.flush(), nullifiers.flush()]);
     },
   };
 }
@@ -146,6 +152,7 @@ export async function getStore(): Promise<Store> {
       store.invoices.hydrate(),
       store.bids.hydrate(),
       store.agents.hydrate(),
+      store.nullifiers.hydrate(),
     ]);
     if (!store.agents.has('veteran')) {
       for (const a of AGENT_SEED) store.agents.set(a.id, a);

@@ -2,8 +2,10 @@
 //
 // v4 model (the current World ID): the frontend IDKitRequestWidget produces an IDKitResult
 // (protocol_version "4.0", responses[]); the backend forwards it AS-IS to the Developer
-// Portal v4 verify endpoint, which confirms the proof is cryptographically valid. We then
-// enforce nullifier uniqueness ourselves.
+// Portal v4 verify endpoint, which confirms the proof is cryptographically valid. This module
+// only validates the proof and surfaces the nullifier; nullifier UNIQUENESS (one invoice per
+// human, Sybil resistance) is enforced by the caller in app/api/invoices/route.ts, which
+// rejects a nullifier already recorded in the store.
 //
 // Requires WORLDID_RP_ID (the registered RP id). The signing of each request's rp_context
 // happens separately in /api/worldid/context (needs WORLDID_SIGNING_KEY). See lib/worldidSign.
@@ -30,7 +32,7 @@ export interface WorldIdVerifyResult {
   success: boolean;
   code?: string;
   detail?: string;
-  // The nullifier we should store for one-human-per-action uniqueness (when present).
+  // The nullifier the caller stores + checks for one-human-per-action uniqueness (when present).
   nullifier?: string;
 }
 

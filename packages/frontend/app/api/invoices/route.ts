@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
   if (bypassWorldId && process.env.WORLDID_RP_ID) {
     console.warn('[invoices] ⚠️  DEMO_BYPASS_WORLDID active — World ID proof check SKIPPED.');
   }
+  const store = await getStore();
+  // Captured from a successful World ID verify, recorded only once the invoice is created.
+  let verifiedNullifier: string | undefined;
   if (process.env.WORLDID_RP_ID && !bypassWorldId) {
     const r = body.worldIdResult;
     if (!r?.responses?.length && !r?.protocol_version) {
@@ -41,6 +44,7 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+    let nullifier: string | undefined;
     try {
       const result = await verifyProof(r);
       if (!result.success) {
@@ -49,6 +53,7 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
+      nullifier = result.nullifier;
     } catch (err) {
       console.error('[invoices] World ID verify error:', err);
       return NextResponse.json(
@@ -56,6 +61,29 @@ export async function POST(req: NextRequest) {
         { status: 502 }
       );
     }
+
+    // Sybil resistance (THREAT_MODEL Layer 1): one invoice per unique human. The action
+    // is fixed (factor-invoice), so World ID returns the SAME nullifier for the same person
+    // every time. If we've already seen this nullifier, reject — a new identity is required
+    // to factor again, which is exactly what stops reputation-washing via fresh accounts.
+    // We CHECK here but RECORD only once the invoice is actually created (below), so a human
+    // whose upload is rejected downstream (e.g. duplicate hash) isn't permanently burned.
+    if (!nullifier) {
+      // A valid v4 proof must carry a nullifier; its absence means we can't enforce
+      // uniqueness, so fail closed rather than silently allow an unbounded identity.
+      console.error('[invoices] verified proof had no nullifier — rejecting (fail closed).');
+      return NextResponse.json(
+        { error: 'Identity verification incomplete. Please verify with World ID and try again.' },
+        { status: 403 }
+      );
+    }
+    if (store.nullifiers.has(nullifier)) {
+      return NextResponse.json(
+        { error: 'This person has already factored an invoice. One invoice per verified human.' },
+        { status: 403 }
+      );
+    }
+    verifiedNullifier = nullifier;
   }
 
   // HCS double-spend prevention (THREAT_MODEL Layer 3). Before creating the
@@ -90,7 +118,6 @@ export async function POST(req: NextRequest) {
   }
 
   const id = randomUUID();
-  const store = await getStore();
 
   // Hardcoded freelancer + client trust data for MVP (per ADR-007, no real World ID)
   const invoice = {
@@ -126,7 +153,13 @@ export async function POST(req: NextRequest) {
   };
 
   store.invoices.set(id, invoice as any);
-  await store.flush(); // ensure the write lands before the serverless function returns
+  // Now that the invoice is actually created, burn this human's nullifier so they can't
+  // factor a second one. Recorded here (not at verify time) so a human rejected upstream
+  // isn't permanently locked out. store.flush() persists invoices + nullifiers together.
+  if (verifiedNullifier) {
+    store.nullifiers.set(verifiedNullifier, { at: new Date().toISOString() });
+  }
+  await store.flush(); // ensure the writes land before the serverless function returns
 
   return NextResponse.json({ id, invoice }, { status: 201 });
 }
