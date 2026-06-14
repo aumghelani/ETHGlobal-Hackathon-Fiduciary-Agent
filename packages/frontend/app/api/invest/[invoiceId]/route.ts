@@ -76,5 +76,7 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     freelancerScore: (invoice as any).freelancer
       ? Math.round(calculateFreelancerTrust((invoice as any).freelancer) * 5 * 100) / 100
       : null,
+    // Display currency (settlement stays USDC under the hood).
+    currency: (invoice as any).currency ?? 'USD',
   });
 }

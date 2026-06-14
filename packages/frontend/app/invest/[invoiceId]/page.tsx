@@ -33,6 +33,7 @@ type InvestData = {
   hcsTopicId: string | null;
   agentWalletAddress: string | null;
   privatePayoutTxHash: string | null;
+  currency?: 'USD' | 'EUR' | 'GBP';
 };
 
 export default function InvestInvoicePage() {
@@ -168,7 +169,7 @@ export default function InvestInvoicePage() {
 
         <Card className="mt-5 divide-y divide-line">
           <Row label="Client" value={data.clientName} />
-          <Row label="Invoice amount" value={<Money usd={data.amountUsd} />} />
+          <Row label="Invoice amount" value={<Money usd={data.amountUsd} currency={data.currency} />} />
           <Row
             label="Investors received"
             value={<Money usd={data.investorsReceivedUsd} className="font-semibold text-brand" />}

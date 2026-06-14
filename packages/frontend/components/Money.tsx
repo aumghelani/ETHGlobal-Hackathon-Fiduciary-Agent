@@ -1,24 +1,36 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useUI } from '@/components/providers';
+import { currencySymbol, toUsd, type Currency } from '@/lib/currency';
 
-// Dollars by default (the fintech story). In Pro mode, optionally reveal the on-chain
-// USDC figure alongside. Tabular numerals keep figures aligned.
+// Face value in the invoice's own currency (USD by default — the fintech story). When the
+// currency isn't USD, Pro mode reveals the USD-equivalent the settlement uses. In Pro mode
+// it can also show the on-chain USDC figure. Tabular numerals keep figures aligned.
 export function Money({
   usd,
   usdc,
+  currency = 'USD',
   className,
   maxFractionDigits = 2,
 }: {
   usd: number;
   usdc?: number | string;
+  currency?: Currency;
   className?: string;
   maxFractionDigits?: number;
 }) {
   const { proMode } = useUI();
+  const sym = currencySymbol(currency);
+  const nonUsd = currency !== 'USD';
   return (
     <span className={'tnum ' + (className ?? '')}>
-      ${usd.toLocaleString(undefined, { maximumFractionDigits: maxFractionDigits })}
+      {sym}
+      {usd.toLocaleString(undefined, { maximumFractionDigits: maxFractionDigits })}
+      {proMode && nonUsd && (
+        <span className="ml-1 text-fg-subtle">
+          ≈ ${toUsd(usd, currency).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </span>
+      )}
       {proMode && usdc !== undefined && (
         <span className="ml-1 text-fg-subtle">· {usdc} USDC</span>
       )}

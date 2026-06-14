@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { hashFile } from "@/lib/hash";
+import { CURRENCIES, currencySymbol, type Currency } from "@/lib/currency";
 
 // World ID 4.0 config. The App ID is public (browser). The rp_context (with the secret
 // signature) is fetched from /api/worldid/context at verify time — never exposed here.
@@ -25,6 +26,7 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [clientName, setClientName] = useState("");
   const [amountUsd, setAmountUsd] = useState("");
+  const [currency, setCurrency] = useState<Currency>("USD");
   const [daysUntilDue, setDaysUntilDue] = useState("60");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -101,6 +103,7 @@ export default function UploadPage() {
         body: JSON.stringify({
           clientName,
           amountUsd: amount,
+          currency,
           daysUntilDue: days,
           invoiceHash: hash,
           worldIdResult: worldIdResult ?? undefined,
@@ -162,18 +165,32 @@ export default function UploadPage() {
 
         <div className="space-y-2">
           <Label htmlFor="amountUsd">Amount due</Label>
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle">
-              $
-            </span>
-            <Input
-              id="amountUsd"
-              type="number"
-              placeholder="5000"
-              className="pl-7"
-              value={amountUsd}
-              onChange={(e) => setAmountUsd(e.target.value)}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-subtle">
+                {currencySymbol(currency)}
+              </span>
+              <Input
+                id="amountUsd"
+                type="number"
+                placeholder="5000"
+                className="pl-7"
+                value={amountUsd}
+                onChange={(e) => setAmountUsd(e.target.value)}
+              />
+            </div>
+            <select
+              aria-label="Currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+              className="h-11 rounded-md border border-line-strong bg-surface px-3 text-sm font-medium text-fg focus-visible:border-brand/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

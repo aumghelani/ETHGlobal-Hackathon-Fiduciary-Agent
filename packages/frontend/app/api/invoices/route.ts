@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
   const invoice = {
     id,
     amountUsd: body.amountUsd,
+    currency: ['USD', 'EUR', 'GBP'].includes(body.currency) ? body.currency : 'USD',
     daysUntilDue: body.daysUntilDue,
     freelancer: {
       identityVerified: true,
