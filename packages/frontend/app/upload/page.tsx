@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { hashFile } from "@/lib/hash";
 import { CURRENCIES, currencySymbol, type Currency } from "@/lib/currency";
+import { useConnectedAddress } from "@/lib/useConnectedAddress";
 
 // World ID 4.0 config. The App ID is public (browser). The rp_context (with the secret
 // signature) is fetched from /api/worldid/context at verify time — never exposed here.
@@ -28,6 +29,7 @@ const WORLD_ID_ENABLED = !!WLD_APP_ID && !DEMO_BYPASS;
 
 export default function UploadPage() {
   const router = useRouter();
+  const connectedAddress = useConnectedAddress();
   const [file, setFile] = useState<File | null>(null);
   const [clientName, setClientName] = useState("");
   const [amountUsd, setAmountUsd] = useState("");
@@ -143,6 +145,7 @@ export default function UploadPage() {
           daysUntilDue: days,
           invoiceHash: hash,
           worldIdResult: worldIdResult ?? undefined,
+          freelancerAddress: connectedAddress ?? undefined,
         }),
       });
       if (!res.ok) {

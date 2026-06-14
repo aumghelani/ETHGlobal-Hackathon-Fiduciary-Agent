@@ -77,35 +77,39 @@ export default function FundedPage() {
     if (isSettled && !settledNotified) setSettledNotified(true);
   }, [isSettled, settledNotified]);
 
-  // Stagger the status steps, then a celebratory burst.
+  // Reveal the first two status steps as progress as soon as the invoice loads (verified +
+  // agent secured are already true here). The THIRD step (cash to your account) only reveals
+  // once the freelancer is actually paid — see the isPaid effect below. No confetti on a timer.
   useEffect(() => {
     if (!data) return;
-    const reduce =
-      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    STEPS.forEach((_, i) => timers.push(setTimeout(() => setRevealed(i + 1), 400 + i * 600)));
-    timers.push(
-      setTimeout(() => {
-        if (!reduce) confetti({ particleCount: 110, spread: 75, origin: { y: 0.35 }, colors: ['#10B981', '#34D399', '#6366F1'], scalar: 0.9 });
-      }, 400 + STEPS.length * 600)
-    );
+    [0, 1].forEach((i) => timers.push(setTimeout(() => setRevealed(i + 1), 400 + i * 600)));
     return () => timers.forEach(clearTimeout);
   }, [data]);
+
+  // The final step + confetti only when the pool actually funds (real on-chain payment).
+  useEffect(() => {
+    if (isPaid) setRevealed(STEPS.length);
+  }, [isPaid]);
 
   const net = data?.netToFreelancer ?? data?.amountUsd ?? 0;
 
   return (
     <div className="mx-auto max-w-lg">
       <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45 }} className="text-center">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand/15">
-          <CheckCircle2 className="text-brand" size={34} />
+        <span className={'mx-auto grid h-16 w-16 place-items-center rounded-full ' + (isPaid ? 'bg-brand/15' : 'bg-surface-3')}>
+          {isPaid ? <CheckCircle2 className="text-brand" size={34} /> : <Loader2 className="animate-spin text-fg-subtle" size={30} />}
         </span>
-        <p className="mt-5 text-sm font-medium text-fg-muted">You&apos;re funded</p>
+        <p className="mt-5 text-sm font-medium text-fg-muted">
+          {isPaid ? "You're funded" : 'Listed for funding'}
+        </p>
         <div className="mt-1 font-display text-5xl font-bold tracking-tight text-fg tnum">
           {data ? <AnimatedNumber value={net} prefix="$" durationMs={900} /> : <span className="text-fg-subtle">$--</span>}
         </div>
         <p className="mt-2 text-fg-muted">
-          is on its way to your account{data?.clientName ? ` for the ${data.clientName} invoice` : ''}.
+          {isPaid
+            ? <>is on its way to your account{data?.clientName ? ` for the ${data.clientName} invoice` : ''}.</>
+            : <>will reach your account the moment investors fully fund this invoice.</>}
         </p>
       </motion.div>
 

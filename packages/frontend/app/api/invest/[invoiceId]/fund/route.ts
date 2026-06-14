@@ -90,5 +90,20 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     );
   }
 
+  // Record this public investment so the investor's history shows it (and so we can pay
+  // them back their share at settlement). Tied to the connected wallet address when sent.
+  const investorAddress = typeof body?.investorAddress === 'string' ? body.investorAddress : null;
+  const investments = ((invoice as any).investments ?? []) as Array<Record<string, unknown>>;
+  investments.push({
+    address: investorAddress,
+    amountUsd: dollars,
+    private: false,
+    txHash,
+    at: new Date().toISOString(),
+  });
+  (invoice as any).investments = investments;
+  store.invoices.set(params.invoiceId, invoice);
+  await store.flush();
+
   return NextResponse.json({ txHash, pool });
 }

@@ -2,13 +2,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Briefcase, TrendingUp, ArrowUpRight, Inbox } from 'lucide-react';
+import { Briefcase, TrendingUp, ArrowUpRight, Inbox, User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { useConnectedAddress } from '@/lib/useConnectedAddress';
 
-// A portfolio dashboard derived from the live store (no per-user auth — this aggregates
-// across all invoices, framed by role). Honest: it's a market overview by role, not a
-// private "my account" (the demo has no login).
+// A portfolio dashboard derived from the live store. Shows ALL platform activity, and
+// highlights the rows tied to YOUR connected wallet (invoices you created, invoices you
+// funded) so it reads as a personal history layered over the market view.
 
+type Investment = { address: string | null; amountUsd: number | null; private: boolean; at: string };
 type Invoice = {
   id: string;
   clientName?: string;
@@ -17,6 +19,9 @@ type Invoice = {
   status?: string;
   acceptedAgentName?: string;
   feePercent?: number | null;
+  agentEarnings?: number | null;
+  createdByAddress?: string | null;
+  investments?: Investment[];
 };
 
 type Role = 'freelancer' | 'investor';
@@ -27,6 +32,7 @@ function apy(i: Invoice): number | null {
 }
 
 export default function DashboardPage() {
+  const me = useConnectedAddress();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [role, setRole] = useState<Role>('freelancer');
@@ -39,13 +45,34 @@ export default function DashboardPage() {
       .finally(() => setLoaded(true));
   }, []);
 
+  // Is this invoice tied to MY connected wallet (created it, or funded it)?
+  const isMine = (i: Invoice): boolean => {
+    if (!me) return false;
+    if (i.createdByAddress === me) return true;
+    return (i.investments ?? []).some((iv) => iv.address === me);
+  };
+  // What I received back as an investor when this invoice settled (my proportional share of
+  // the investor payout). Only my PUBLIC deposits have a visible amount.
+  const myReceived = (i: Invoice): number => {
+    if (!me || i.status !== 'settled') return 0;
+    const myPublic = (i.investments ?? []).filter((iv) => iv.address === me && !iv.private);
+    const myStake = myPublic.reduce((s, iv) => s + (iv.amountUsd ?? 0), 0);
+    if (myStake <= 0) return 0;
+    // Investors split (amount - agent fee) proportionally to their stake in the net pool.
+    const investorPool = i.amountUsd - (i.agentEarnings ?? 0);
+    const net = i.amountUsd; // funding is denominated against net-to-freelancer (~amount)
+    return net > 0 ? Math.round((myStake / net) * investorPool * 100) / 100 : 0;
+  };
+
   // Freelancer view: every invoice that has been listed/accepted (the supply side).
   // Investor view: invoices open for funding or already settled (the capital side).
   const freelancerInvoices = invoices.filter((i) => i.acceptedAgentName || i.status === 'pending_auction');
   const investorInvoices = invoices.filter(
     (i) => i.acceptedAgentName && (i.status === 'funding' || i.status === 'settled')
   );
-  const rows = role === 'freelancer' ? freelancerInvoices : investorInvoices;
+  let rows = role === 'freelancer' ? freelancerInvoices : investorInvoices;
+  // Sort my own records to the top so my history is front and center.
+  rows = [...rows].sort((a, b) => (isMine(b) ? 1 : 0) - (isMine(a) ? 1 : 0));
 
   const settled = invoices.filter((i) => i.status === 'settled');
   const funding = invoices.filter((i) => i.status === 'funding');
@@ -125,21 +152,36 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {rows.map((i, idx) => (
+                {rows.map((i, idx) => {
+                  const mine = isMine(i);
+                  const received = role === 'investor' ? myReceived(i) : 0;
+                  return (
                   <motion.tr
                     key={i.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: idx * 0.03 }}
+                    className={mine ? 'bg-brand/[0.05]' : undefined}
                   >
-                    <td className="px-4 py-3 font-medium text-fg">{i.clientName ?? 'Client'}</td>
+                    <td className="px-4 py-3 font-medium text-fg">
+                      <span className="inline-flex items-center gap-2">
+                        {i.clientName ?? 'Client'}
+                        {mine && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                            <User size={10} /> You
+                          </span>
+                        )}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 tnum text-fg">${i.amountUsd.toLocaleString()}</td>
                     <td className="px-4 py-3 text-fg-muted">
                       {role === 'freelancer'
                         ? (i.acceptedAgentName ?? '-')
-                        : apy(i) !== null
-                          ? `~${apy(i)!.toFixed(0)}% APY`
-                          : '-'}
+                        : received > 0
+                          ? <span className="font-semibold text-brand tnum">+${received.toLocaleString()} received</span>
+                          : apy(i) !== null
+                            ? `~${apy(i)!.toFixed(0)}% APY`
+                            : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={i.status} />
@@ -150,7 +192,8 @@ export default function DashboardPage() {
                       </Link>
                     </td>
                   </motion.tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </Card>

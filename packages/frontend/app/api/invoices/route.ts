@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
     daysUntilDue: body.daysUntilDue,
     // World ID nullifier this invoice is bound to (null when the gate is bypassed for demos).
     worldIdNullifier: verifiedNullifier ?? null,
+    // Connected wallet that created this invoice (for "my history"). Null if not sent.
+    createdByAddress: typeof body.freelancerAddress === 'string' ? body.freelancerAddress : null,
     freelancer: {
       identityVerified: !!verifiedNullifier,
       ensSubname: 'maria.fid.eth',
@@ -183,7 +185,22 @@ export async function GET() {
     const winningBid = acceptedName
       ? (store.bids.get(id) || []).find((b) => b.agentName === acceptedName)
       : undefined;
-    return { ...inv, feePercent: winningBid?.feePercent ?? null };
+    // Sanitize investments for the client: expose the investor address (so the dashboard
+    // can highlight "mine") + amount for PUBLIC deposits only. Private deposit amounts are
+    // never sent (Unlink privacy) — only that the address participated.
+    const rawInvestments = (((inv as any).investments ?? []) as Array<any>);
+    const investments = rawInvestments.map((iv) => ({
+      address: iv.address ?? null,
+      amountUsd: iv.private ? null : iv.amountUsd,
+      private: !!iv.private,
+      at: iv.at,
+    }));
+    return {
+      ...inv,
+      feePercent: winningBid?.feePercent ?? null,
+      agentEarnings: winningBid?.agentEarnings ?? null,
+      investments,
+    };
   });
   return NextResponse.json({ invoices });
 }

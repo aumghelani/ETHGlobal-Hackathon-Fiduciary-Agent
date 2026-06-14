@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Lock, ShieldCheck, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { HcsAuditLink } from '@/components/HcsAuditLink';
 import { AgentWalletLink } from '@/components/AgentWalletLink';
 import { DYNAMIC_ENABLED } from '@/components/DynamicProvider';
 import { WalletFundButton } from '@/components/WalletFundButton';
+import { useConnectedAddress } from '@/lib/useConnectedAddress';
 
 // Investor KYC gate is on only when explicitly enabled; default keeps funding open.
 const KYC_ENABLED = process.env.NEXT_PUBLIC_KYC_ENABLED === 'true';
@@ -42,6 +43,7 @@ type InvestData = {
 export default function InvestInvoicePage() {
   const params = useParams();
   const invoiceId = params.invoiceId as string;
+  const connectedAddress = useConnectedAddress();
 
   const [data, setData] = useState<InvestData | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -49,6 +51,9 @@ export default function InvestInvoicePage() {
   const [funding, setFunding] = useState(false);
   const [error, setError] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  // After a successful investment, show a payback ETA ("you'll get your money back at
+  // settlement, in ~N days"). Cleared on settle (when the real "received" shows instead).
+  const [justInvested, setJustInvested] = useState(false);
   // Investor KYC gate (Part 2). Only enforced when NEXT_PUBLIC_KYC_ENABLED is set;
   // otherwise funding is open (default — demo never blocked).
   const [kycVerified, setKycVerified] = useState(false);
@@ -124,7 +129,7 @@ export default function InvestInvoicePage() {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountUsd: amount }),
+        body: JSON.stringify({ amountUsd: amount, investorAddress: connectedAddress ?? undefined }),
       });
       const result = await res.json();
       if (!res.ok) {
@@ -135,6 +140,7 @@ export default function InvestInvoicePage() {
       // the unified picture either way.
       await refresh();
       setShare('');
+      setJustInvested(true);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -246,6 +252,25 @@ export default function InvestInvoicePage() {
         )}
       </div>
 
+      {/* Payback ETA — shown right after you invest, so you know when your money returns. */}
+      {justInvested && !data.pool.funded && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-5 flex items-start gap-3 rounded-md border border-brand/40 bg-brand/[0.09] p-4"
+        >
+          <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-brand" />
+          <div>
+            <p className="text-sm font-semibold text-fg">Investment confirmed</p>
+            <p className="mt-0.5 text-sm text-fg-muted">
+              You get your principal plus yield back when the client settles, in about{' '}
+              <span className="font-medium text-fg">{data.daysUntilDue} days</span>. Track it in your{' '}
+              <Link href="/dashboard" className="font-medium text-brand hover:underline">dashboard</Link>.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Investor eligibility gate — only when KYC is enabled and not yet verified */}
       {!data.pool.funded && KYC_ENABLED && !kycVerified && (
         <div className="mt-6 rounded-md border border-accent/30 bg-accent/[0.06] p-4">
@@ -312,20 +337,21 @@ export default function InvestInvoicePage() {
             {funding ? 'Funding…' : 'Buy a piece'}
           </Button>
 
-          {/* Alternative rail: fund with Blink (Base Sepolia). */}
+          {/* Alternative rail: fund with Blink (Base Sepolia). Same size as the wallet button. */}
           {blinkDone ? (
             <p className="flex items-center justify-center gap-1.5 text-sm text-brand">
               <CheckCircle2 size={14} /> Funded with Blink ✓
             </p>
           ) : (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              className="w-full"
               onClick={handleFundWithBlink}
               disabled={funding}
-              className="w-full text-center text-xs font-medium text-fg-subtle hover:text-fg-muted hover:underline"
             >
-              or fund with Blink instead
-            </button>
+              <Zap size={15} className="mr-2" /> Fund with Blink
+            </Button>
           )}
 
           {/* Real client-side funding from a connected wallet (Dynamic) — only when enabled.
