@@ -19,9 +19,13 @@ exactly as before.)
 ## 2. Import the project on Vercel
 
 1. New Project → import this Git repo.
-2. **Root Directory:** leave at the repo root (the `vercel.json` here targets the frontend
-   via `pnpm --filter @fiduciary/frontend build`). Framework auto-detects Next.js.
-3. Vercel uses pnpm + the workspace lockfile automatically.
+2. **Root Directory:** set it to **`packages/frontend`** (Settings → General → Root Directory).
+   This is required — Vercel's Next.js detection reads the Root Directory's `package.json`, and
+   `next` lives in `packages/frontend/package.json`, not the repo root. Pointing it at the repo
+   root fails with "No Next.js version detected".
+3. Vercel detects the pnpm workspace and runs `install` from the monorepo root automatically, so
+   the workspace deps (`@fiduciary/agents`, `@fiduciary/hedera`) link correctly. The committed
+   `vercel.json` then runs `next build` inside the frontend dir.
 
 ## 3. Environment variables (Vercel → Settings → Environment Variables)
 
