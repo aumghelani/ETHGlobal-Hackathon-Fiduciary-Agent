@@ -65,6 +65,32 @@ export default function InvestInvoicePage() {
     }
   }
 
+  // Alternative funding rail via Blink (Base Sepolia — separate from the Arc pool, ADR-024 note).
+  const [blinkDone, setBlinkDone] = useState(false);
+  async function handleFundWithBlink() {
+    setError('');
+    const amount = Number(share);
+    if (!(amount > 0)) {
+      setError('Enter an amount in dollars greater than zero.');
+      return;
+    }
+    setFunding(true);
+    try {
+      const res = await fetch(`/api/invest/${invoiceId}/fund-blink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amountUsd: amount }),
+      });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) setError(r.error ?? 'Could not complete the Blink deposit.');
+      else setBlinkDone(true);
+    } catch {
+      setError('Could not complete the Blink deposit.');
+    } finally {
+      setFunding(false);
+    }
+  }
+
   async function refresh() {
     const res = await fetch(`/api/invest/${invoiceId}`);
     if (res.ok) {
@@ -281,6 +307,23 @@ export default function InvestInvoicePage() {
           <Button type="submit" size="lg" className="w-full" disabled={funding}>
             {funding ? 'Funding…' : 'Buy a piece'}
           </Button>
+
+          {/* Alternative rail: fund with Blink (Base Sepolia). */}
+          {blinkDone ? (
+            <p className="flex items-center justify-center gap-1.5 text-sm text-brand">
+              <CheckCircle2 size={14} /> Funded with Blink ✓
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleFundWithBlink}
+              disabled={funding}
+              className="w-full text-center text-xs font-medium text-fg-subtle hover:text-fg-muted hover:underline"
+            >
+              or fund with Blink instead
+            </button>
+          )}
+
           {error && <p className="text-sm text-danger">{error}</p>}
         </form>
       )}

@@ -107,6 +107,23 @@ export default function FundedPage() {
         </p>
       )}
 
+      {/* Cash-to-bank rail (Blink). Abstracted as "your bank" by default; Pro mode is honest
+          that the fiat off-ramp is stubbed (Blink can't move fiat — seam for a real provider). */}
+      {data && (
+        <div className="mt-6 flex items-center justify-between rounded-md border border-line bg-surface-2 p-3.5">
+          <span className="flex items-center gap-2 text-sm text-fg-muted">
+            <Banknote size={15} className="text-brand" />
+            Cash routed to your bank account
+          </span>
+          <span className="text-xs font-medium text-fg-subtle">via Blink</span>
+        </div>
+      )}
+      {proMode && data && (
+        <p className="mt-1.5 text-center text-[11px] text-fg-subtle">
+          Off-ramp is stubbed — Blink is a deposit SDK with no fiat rail; seam for a real payout provider in lib/blink.ts.
+        </p>
+      )}
+
       {/* Next steps — explicit, optional. NOT an investor form. */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <Button asChild size="lg" className="flex-1">

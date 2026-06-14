@@ -42,14 +42,35 @@ export async function offrampUsdcToBank(
   };
 }
 
-// REFERENCE (not implemented): Blink's ACTUAL primitive is a deposit pull into your app.
-// If pursuing Blink's $5k track, this is the real shape — on Base Sepolia (84532), NOT Arc:
-//
-//   import { Deposit } from '@swype-org/deposit';
-//   const deposit = new Deposit({ signer: '/api/sign-payment' });  // backend ECDSA P-256 signer
-//   const { transfer } = await deposit.requestDeposit({
-//     amount, chainId: 84532, address: <merchant wallet>, token: <Base Sepolia USDC>,
-//   });
-//
-// Sandbox merchant auto-approves at api-sandbox.blink.cash; no API key (keypair + merchantId).
-// See docs/BLINK_RECON.md for the full path.
+export interface BlinkDepositResult {
+  status: 'mocked' | 'completed';
+  amountUsd: number;
+  // A real Blink deposit returns a transfer id + status; chainId 84532 = Base Sepolia.
+  transferId: string;
+  chainId: number;
+  note: string;
+}
+
+// INVESTOR-SIDE deposit via Blink. STUB-WITH-SEAM: Blink's deposit DOES work for real,
+// but only on Base Sepolia (NOT Arc), needs the @swype-org/deposit SDK + a backend ECDSA
+// signer endpoint + a (sandbox auto-approved) merchant. That's a separate funding rail on
+// a different chain — out of scope for the Arc pool. This returns a mocked confirmation so
+// the UI path is exercised; the seam below is exactly where the real SDK drops in.
+export async function blinkInvestorDeposit(amountUsd: number): Promise<BlinkDepositResult> {
+  // SEAM — to make real (Base Sepolia):
+  //   import { Deposit } from '@swype-org/deposit';
+  //   const deposit = new Deposit({ signer: '/api/blink/sign' });   // backend ECDSA P-256 signer
+  //   const { transfer } = await deposit.requestDeposit({
+  //     amount: amountUsd, chainId: 84532, address: <merchant wallet>, token: <Base Sepolia USDC>,
+  //   });
+  //   return { status: 'completed', amountUsd, transferId: transfer.id, chainId: 84532, note: '...' };
+  return {
+    status: 'mocked',
+    amountUsd,
+    transferId: 'mock_blink_transfer_BASE_SEPOLIA',
+    chainId: 84532,
+    note:
+      'STUB — real Blink deposit runs on Base Sepolia (not Arc) via @swype-org/deposit. ' +
+      'Sandbox merchant auto-approves at api-sandbox.blink.cash. Seam in lib/blink.ts.',
+  };
+}
