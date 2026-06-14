@@ -45,6 +45,37 @@ export default function UploadPage() {
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [rpContext, setRpContext] = useState<RpContext | null>(null);
   const [preparing, setPreparing] = useState(false);
+  // Demo-only: status text for the "reset uniqueness" control (clears the one-per-human
+  // gate so the same human can re-verify on stage). Token-guarded server-side.
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  // Clear the World ID nullifier gate. Prompts for the secret token so a clicking visitor
+  // can't silently defeat Sybil resistance — only someone with the passphrase can reset.
+  async function handleReset() {
+    const token = window.prompt("Enter the demo reset passphrase:");
+    if (!token) return;
+    setResetMsg("");
+    setResetting(true);
+    try {
+      const res = await fetch("/api/dev/reset-nullifiers", {
+        method: "POST",
+        headers: { "x-dev-reset-token": token },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setResetMsg(`Reset done. Cleared ${data.clearedNullifiers ?? 0}. You can verify again.`);
+        setWorldIdResult(null);
+        setError("");
+      } else {
+        setResetMsg(data.error ?? "Reset failed.");
+      }
+    } catch {
+      setResetMsg("Reset failed. Try again.");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   // Fetch a fresh server-signed rp_context, then open the widget. Keeps the signing
   // key server-side (the route signs; we only receive the public context).
@@ -141,10 +172,25 @@ export default function UploadPage() {
         Upload your unpaid invoice and agents will have offers in seconds.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2.5">
+      <div className="mt-6 flex flex-wrap items-center gap-2.5">
         <VerifiedBadge label="Identity verified" source="World ID" />
         <VerifiedBadge label="Domain verified" source="DKIM proof" />
+        {/* Demo-only: reset the one-per-human gate so the same verified human can run the
+            flow again on stage. Token-guarded (prompts for a passphrase), so a visitor can't
+            silently defeat Sybil resistance. Hidden unless explicitly enabled. */}
+        {process.env.NEXT_PUBLIC_SHOW_RESET === "true" && (
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={resetting}
+            className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-fg-subtle transition-colors hover:text-fg-muted disabled:opacity-50"
+            title="Demo only: clear the one-per-human gate (passphrase required)"
+          >
+            {resetting ? "Resetting…" : "Reset verification (demo)"}
+          </button>
+        )}
       </div>
+      {resetMsg && <p className="mt-2 text-xs text-fg-subtle">{resetMsg}</p>}
 
       <form className="mt-7 space-y-5 rounded-lg border border-line bg-surface p-6 shadow-sm" onSubmit={handleSubmit}>
         <div className="space-y-2">
