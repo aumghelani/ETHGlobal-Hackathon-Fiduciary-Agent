@@ -299,7 +299,7 @@ export default function UploadPage() {
                   environment={WLD_ENV}
                   rp_context={rpContext}
                   allow_legacy_proofs={true}
-                  preset={proofOfHuman()}
+                  preset={proofOfHuman(connectedAddress ? { signal: connectedAddress } : undefined)}
                   onSuccess={(result: IDKitResult) => {
                     setWorldIdResult(result);
                     setWidgetOpen(false);

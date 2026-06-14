@@ -45,12 +45,25 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+    // Bind the proof to the connected wallet (if one was sent). The human signed this address
+    // as the World ID `signal` during verification, so verifyProof checks the proof's
+    // signal_hash matches this exact wallet — cryptographically tying the verified human to it.
+    const expectedSignal =
+      typeof body.freelancerAddress === 'string' ? body.freelancerAddress : undefined;
     let nullifier: string | undefined;
     try {
-      const result = await verifyProof(r);
+      const result = await verifyProof(r, expectedSignal);
       if (!result.success) {
         return NextResponse.json(
           { error: 'Identity verification failed. Please verify with World ID and try again.' },
+          { status: 403 }
+        );
+      }
+      // If a wallet was connected, the proof MUST be bound to it. A mismatch means the proof
+      // was generated for a different wallet — reject it (someone else's verification).
+      if (expectedSignal && result.signalBound === false) {
+        return NextResponse.json(
+          { error: 'This verification is not bound to your connected wallet. Please verify again.' },
           { status: 403 }
         );
       }
