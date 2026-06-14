@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Moon, Sun, Sparkles } from 'lucide-react';
+import { Moon, Sun, Sparkles, Briefcase, TrendingUp } from 'lucide-react';
 import { useUI } from '@/components/providers';
 import { DYNAMIC_ENABLED } from '@/components/DynamicProvider';
 import { WalletButton } from '@/components/WalletButton';
@@ -12,9 +12,20 @@ const LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
 ];
 
+// Which role the connected account is currently acting as, derived from the page. The app
+// has no fixed roles (any wallet can do both) — this just makes the demo legible when you
+// switch between the freelancer account and the investor accounts.
+function roleForPath(path: string | null): { label: string; icon: typeof Briefcase } | null {
+  if (!path) return null;
+  if (path.startsWith('/upload') || path.startsWith('/funded')) return { label: 'Freelancer', icon: Briefcase };
+  if (path.startsWith('/invest')) return { label: 'Investor', icon: TrendingUp };
+  return null;
+}
+
 export function NavBar() {
   const pathname = usePathname();
   const { theme, toggleTheme, proMode, toggleProMode } = useUI();
+  const role = roleForPath(pathname);
 
   return (
     <nav className="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-md">
@@ -42,6 +53,17 @@ export function NavBar() {
               );
             })}
           </div>
+
+          {/* Role badge — reflects what the connected account is doing on this page. */}
+          {role && (
+            <span
+              className="hidden items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/[0.08] px-2.5 py-1.5 text-xs font-semibold text-brand sm:inline-flex"
+              title={`Acting as ${role.label}`}
+            >
+              <role.icon size={13} />
+              {role.label}
+            </span>
+          )}
 
           {/* Dynamic login/connect — only when configured. */}
           {DYNAMIC_ENABLED && <WalletButton />}

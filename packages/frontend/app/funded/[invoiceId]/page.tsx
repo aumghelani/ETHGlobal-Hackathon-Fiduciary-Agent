@@ -22,6 +22,9 @@ type Data = {
   hcsSequenceNumber: number | null;
   hcsTopicId: string | null;
   freelancerScore: number | null;
+  status?: string;
+  pool?: { raised: number; target: number; funded: boolean };
+  investorsReceivedUsd?: number;
 };
 
 const STEPS = [
@@ -37,13 +40,42 @@ export default function FundedPage() {
 
   const [data, setData] = useState<Data | null>(null);
   const [revealed, setRevealed] = useState(0);
+  // Track the funded / settled milestones so we can fire a one-time notification at each.
+  const [paidNotified, setPaidNotified] = useState(false);
+  const [settledNotified, setSettledNotified] = useState(false);
 
+  // Poll so the freelancer SEES the moment investors fill the pool (cash advanced) and the
+  // moment the client settles (loop closed) — the two notification milestones below.
   useEffect(() => {
-    fetch(`/api/invest/${invoiceId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setData(d))
-      .catch(() => {});
+    let active = true;
+    async function tick() {
+      try {
+        const r = await fetch(`/api/invest/${invoiceId}`);
+        if (r.ok && active) setData(await r.json());
+      } catch {}
+    }
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
   }, [invoiceId]);
+
+  const isPaid = !!data?.pool?.funded; // pool hit target → freelancer advanced cash
+  const isSettled = data?.status === 'settled'; // client paid → loop closed
+
+  // Fire the celebratory burst once when the freelancer first becomes paid.
+  useEffect(() => {
+    if (isPaid && !paidNotified) {
+      setPaidNotified(true);
+      const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduce) confetti({ particleCount: 120, spread: 80, origin: { y: 0.3 }, colors: ['#10B981', '#34D399', '#6366F1'] });
+    }
+  }, [isPaid, paidNotified]);
+  useEffect(() => {
+    if (isSettled && !settledNotified) setSettledNotified(true);
+  }, [isSettled, settledNotified]);
 
   // Stagger the status steps, then a celebratory burst.
   useEffect(() => {
@@ -76,6 +108,53 @@ export default function FundedPage() {
           is on its way to your account{data?.clientName ? ` for the ${data.clientName} invoice` : ''}.
         </p>
       </motion.div>
+
+      {/* Milestone notifications — fire as the freelancer's invoice progresses. */}
+      {isSettled ? (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex items-start gap-3 rounded-md border border-brand/40 bg-brand/[0.09] p-4"
+        >
+          <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-brand" />
+          <div>
+            <p className="text-sm font-semibold text-fg">Loop closed: your client has paid</p>
+            <p className="mt-0.5 text-sm text-fg-muted">
+              The invoice settled on-chain and investors were paid back{data?.investorsReceivedUsd ? ' their share' : ''}. You owe nothing further.
+            </p>
+          </div>
+        </motion.div>
+      ) : isPaid ? (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex items-start gap-3 rounded-md border border-brand/40 bg-brand/[0.09] p-4"
+        >
+          <Banknote size={18} className="mt-0.5 shrink-0 text-brand" />
+          <div>
+            <p className="text-sm font-semibold text-fg">
+              You&apos;ve been paid <Money usd={net} className="text-brand" />
+            </p>
+            <p className="mt-0.5 text-sm text-fg-muted">
+              Investors fully funded your invoice, so your advance was released on-chain.
+            </p>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-6 flex items-start gap-3 rounded-md border border-line bg-surface-2 p-4"
+        >
+          <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-fg-subtle" />
+          <div>
+            <p className="text-sm font-semibold text-fg">Waiting on investors</p>
+            <p className="mt-0.5 text-sm text-fg-muted">
+              Your advance releases the moment investors fully fund this invoice. We&apos;ll update this live.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Status timeline */}
       <div className="mt-9 space-y-3">
