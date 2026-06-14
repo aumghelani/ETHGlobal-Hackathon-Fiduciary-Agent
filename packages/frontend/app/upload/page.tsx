@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { IDKitRequestWidget, proofOfHuman, type IDKitResult, type RpContext } from "@worldcoin/idkit";
+import { IDKitRequestWidget, proofOfHuman, setDebug, type IDKitResult, type RpContext } from "@worldcoin/idkit";
 import { CheckCircle2, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,12 @@ const WLD_ACTION = process.env.NEXT_PUBLIC_WLD_ACTION ?? "factor-invoice";
 // simulator testing this must be "staging". The app_id needs no special prefix in v4 — this
 // flag is the only thing that selects staging vs production. Default to staging for dev.
 const WLD_ENV = (process.env.NEXT_PUBLIC_WLD_ENV ?? "staging") as "production" | "staging";
+// In dev, turn on IDKit's own debug logging so the RAW bridge error_code is printed
+// ("[IDKit] Native: received error response", <code>) BEFORE IDKit flattens an unknown
+// code to the opaque "generic_error". That raw code is what pinpoints a relay/preview failure.
+if (process.env.NODE_ENV !== "production") {
+  setDebug(true);
+}
 // Demo escape hatch (default OFF): when true, skip the World ID step so the full flow
 // can be demoed without a real World ID account. Must mirror the server's DEMO_BYPASS_WORLDID.
 const DEMO_BYPASS = process.env.NEXT_PUBLIC_DEMO_BYPASS_WORLDID === "true";
@@ -299,13 +305,20 @@ export default function UploadPage() {
                     setWidgetOpen(false);
                   }}
                   onError={(err: unknown) => {
-                    // Surface World's real failure reason instead of a generic message —
-                    // the IDKit error carries a code/detail (e.g. invalid_signature,
-                    // verification_rejected) that pinpoints why the proof was refused.
+                    // Surface World's real failure reason instead of a generic message.
+                    // IDKit v4's onError passes the IDKitErrorCode as a PLAIN STRING (not an
+                    // object with .code), so the old `err.code` read always yielded "unknown"
+                    // and hid the actual cause. Handle both shapes: bare string code, or an
+                    // object carrying code/detail/message (e.g. invalid_signature,
+                    // verification_rejected, validation_error).
                     console.error('[worldid] IDKit onError:', err);
-                    const e = err as { code?: string; detail?: string; message?: string };
+                    const e =
+                      typeof err === 'string'
+                        ? { code: err }
+                        : (err as { code?: string; detail?: string; message?: string });
+                    const code = e?.code ?? e?.message ?? 'unknown';
                     setError(
-                      `World ID error: ${e?.code ?? 'unknown'}${e?.detail ? ` — ${e.detail}` : e?.message ? ` — ${e.message}` : ''}`
+                      `World ID error: ${code}${e?.detail ? ` — ${e.detail}` : ''}`
                     );
                     setWidgetOpen(false);
                   }}
