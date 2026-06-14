@@ -7,6 +7,7 @@ import { useUI } from '@/components/providers';
 const LINKS = [
   { href: '/upload', label: 'Get funded' },
   { href: '/invest', label: 'Invest' },
+  { href: '/dashboard', label: 'Dashboard' },
 ];
 
 export function NavBar() {
