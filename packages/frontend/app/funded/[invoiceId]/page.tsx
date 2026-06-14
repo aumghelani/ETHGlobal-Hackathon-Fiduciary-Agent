@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { CheckCircle2, Loader2, ArrowRight, Banknote, ShieldCheck, Sparkles } from 'lucide-react';
+import { CheckCircle2, Loader2, ArrowRight, Banknote, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Money, AnimatedNumber } from '@/components/Money';
 import { useUI } from '@/components/providers';
@@ -21,6 +21,7 @@ type Data = {
   agentName: string | null;
   hcsSequenceNumber: number | null;
   hcsTopicId: string | null;
+  freelancerScore: number | null;
 };
 
 const STEPS = [
@@ -105,6 +106,30 @@ export default function FundedPage() {
           Managed by <span className="font-medium text-fg">{data.agentName}</span> — they&apos;ll collect from your
           client so you don&apos;t have to chase it.
         </p>
+      )}
+
+      {/* Freelancer reputation — your score + how it grows. Better score → better future offers. */}
+      {data?.freelancerScore !== null && data?.freelancerScore !== undefined && (
+        <div className="mt-6 rounded-md border border-line bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-fg">Your reputation</span>
+            <span className="inline-flex items-center gap-1 font-display text-lg font-bold text-brand tnum">
+              <Star size={15} className="fill-brand text-brand" />
+              {data.freelancerScore.toFixed(1)}
+              <span className="text-sm font-normal text-fg-subtle">/ 5</span>
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+            <div className="h-full rounded-full bg-brand" style={{ width: `${(data.freelancerScore / 5) * 100}%` }} />
+          </div>
+          <p className="mt-3 text-xs font-medium text-fg-muted">Raise it to unlock better offers:</p>
+          <ul className="mt-1.5 space-y-1 text-xs text-fg-muted">
+            <li>· Get clients to pay on time (the biggest factor)</li>
+            <li>· Work with more clients (diversity)</li>
+            <li>· Keep a clean record — no disputes</li>
+            <li>· Build history over time</li>
+          </ul>
+        </div>
       )}
 
       {/* Cash-to-bank rail (Blink). Abstracted as "your bank" by default; Pro mode is honest

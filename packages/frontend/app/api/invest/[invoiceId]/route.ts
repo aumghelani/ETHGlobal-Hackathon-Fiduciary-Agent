@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStore } from '@/lib/store';
 import { getPoolState } from '@/lib/arc';
+import { calculateFreelancerTrust } from '@fiduciary/agents';
 
 export async function GET(req: NextRequest, { params }: { params: { invoiceId: string } }) {
   const store = getStore();
@@ -71,5 +72,9 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     agentWalletAddress: (invoice as any).agentWalletAddress ?? null,
     // Private (Unlink) payout tx if one fired at settlement (Track E) — null otherwise.
     privatePayoutTxHash: (invoice as any).privatePayoutTxHash ?? null,
+    // Freelancer trust score (0-1 → shown as 0-5 for UI consistency with the agent score).
+    freelancerScore: (invoice as any).freelancer
+      ? Math.round(calculateFreelancerTrust((invoice as any).freelancer) * 5 * 100) / 100
+      : null,
   });
 }
