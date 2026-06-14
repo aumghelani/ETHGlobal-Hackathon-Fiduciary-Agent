@@ -136,14 +136,8 @@ Live: **https://cashmeifyoucan.us** (deployed on Vercel) · Video: _[Loom URL]_
 
 ### Docs
 
-- [`EXPLAINER.md`](EXPLAINER.md): plain-English, no-jargon walkthrough of the whole project, with analogies, an explanation of how on-chain verification works, and a real annotated HashScan payload example.
-- [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md): step-by-step presenter script for the judging walkthrough.
 - [`DEPLOY.md`](DEPLOY.md): Vercel deployment guide and environment-variable checklist.
 
 ## License
 
 MIT
-
-## Acknowledgments
-
-Inspired by 3Jane (uncollateralized USDC lending) and the thesis that real-world financial flows belong on-chain.

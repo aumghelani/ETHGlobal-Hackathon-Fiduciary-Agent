@@ -96,3 +96,8 @@ recovery_file_*.dat
 # ============================================
 .vercel/
 .netlify/
+
+# Private practice/notes — keep local, not public
+EXPLAINER.md
+DEMO_SCRIPT.md
+WORLDID_STATUS.md

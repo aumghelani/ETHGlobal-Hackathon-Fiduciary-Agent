@@ -195,8 +195,19 @@ export async function GET() {
       private: !!iv.private,
       at: iv.at,
     }));
+    // Strip privacy-sensitive raw fields before spreading: private deposit amounts (Unlink
+    // privacy), the per-invoice blink amounts, and the World ID nullifier (a stable
+    // personhood id that must not be broadcast). The sanitized `investments` above is what
+    // the client gets instead.
+    const {
+      privateDeposits: _pd,
+      blinkDeposits: _bd,
+      worldIdNullifier: _nu,
+      investments: _inv,
+      ...safe
+    } = inv as any;
     return {
-      ...inv,
+      ...safe,
       feePercent: winningBid?.feePercent ?? null,
       agentEarnings: winningBid?.agentEarnings ?? null,
       investments,
