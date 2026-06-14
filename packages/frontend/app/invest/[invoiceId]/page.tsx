@@ -3,13 +3,16 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Lock } from 'lucide-react';
+import { CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Money, AnimatedNumber } from '@/components/Money';
 import { HcsAuditLink } from '@/components/HcsAuditLink';
 import { AgentWalletLink } from '@/components/AgentWalletLink';
+
+// Investor KYC gate is on only when explicitly enabled; default keeps funding open.
+const KYC_ENABLED = process.env.NEXT_PUBLIC_KYC_ENABLED === 'true';
 
 type InvestData = {
   clientName: string;
@@ -42,6 +45,25 @@ export default function InvestInvoicePage() {
   const [funding, setFunding] = useState(false);
   const [error, setError] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
+  // Investor KYC gate (Part 2). Only enforced when NEXT_PUBLIC_KYC_ENABLED is set;
+  // otherwise funding is open (default — demo never blocked).
+  const [kycVerified, setKycVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  async function handleVerifyInvestor() {
+    setError('');
+    setVerifying(true);
+    try {
+      const res = await fetch('/api/kyc/verify', { method: 'POST' });
+      const r = await res.json().catch(() => ({}));
+      if (res.ok && r.verified) setKycVerified(true);
+      else setError(r.reason ?? 'Could not verify eligibility. Please try again.');
+    } catch {
+      setError('Could not verify eligibility. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   async function refresh() {
     const res = await fetch(`/api/invest/${invoiceId}`);
@@ -194,7 +216,30 @@ export default function InvestInvoicePage() {
         )}
       </div>
 
-      {!data.pool.funded && (
+      {/* Investor eligibility gate — only when KYC is enabled and not yet verified */}
+      {!data.pool.funded && KYC_ENABLED && !kycVerified && (
+        <div className="mt-6 rounded-md border border-accent/30 bg-accent/[0.06] p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-fg">
+            <ShieldCheck size={16} className="text-accent" />
+            Verify to invest
+          </div>
+          <p className="mt-1 text-sm text-fg-muted">
+            Confirm you&apos;re an eligible investor before funding. Takes a moment.
+          </p>
+          <Button
+            type="button"
+            variant="accent"
+            className="mt-3 w-full"
+            onClick={handleVerifyInvestor}
+            disabled={verifying}
+          >
+            {verifying ? 'Verifying…' : 'Verify eligibility'}
+          </Button>
+          {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+        </div>
+      )}
+
+      {!data.pool.funded && (!KYC_ENABLED || kycVerified) && (
         <form className="mt-6 space-y-3" onSubmit={handleFund}>
           <button
             type="button"
