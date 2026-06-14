@@ -81,6 +81,15 @@ class PersistentMap<V> {
     return this;
   }
 
+  // Wipe the whole map (memory + the backing Redis hash). Used by the dev-only reset
+  // route so test runs can repeat without the uniqueness gate locking the tester out.
+  async clear(): Promise<number> {
+    const n = this.mem.size;
+    this.mem.clear();
+    if (redis) await redis.del(this.hashKey);
+    return n;
+  }
+
   async flush(): Promise<void> {
     if (this.pending.size) await Promise.all([...this.pending]);
   }
