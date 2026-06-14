@@ -133,7 +133,7 @@ export default function UploadPage() {
     <div className="mx-auto max-w-md">
       <h1 className="font-display text-3xl font-bold tracking-tight text-fg">Get cash today</h1>
       <p className="mt-2 text-fg-muted">
-        Upload your unpaid invoice — agents will have offers in seconds.
+        Upload your unpaid invoice and agents will have offers in seconds.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2.5">
@@ -249,7 +249,7 @@ export default function UploadPage() {
           )
         ) : DEMO_BYPASS && WLD_APP_ID ? (
           <p className="text-center text-xs text-warn">
-            Demo mode — World ID verification bypassed.
+            Demo mode: World ID verification bypassed.
           </p>
         ) : (
           <p className="text-center text-xs text-fg-subtle">
@@ -274,7 +274,7 @@ export default function UploadPage() {
             <div>
               <p className="font-semibold">This invoice has already been factored.</p>
               <p className="mt-1 text-fg-muted">
-                Our audit log shows this exact invoice was already submitted — it can&apos;t be sold twice.
+                Our audit log shows this exact invoice was already submitted, so it can&apos;t be sold twice.
                 Upload a different invoice to continue.
               </p>
             </div>

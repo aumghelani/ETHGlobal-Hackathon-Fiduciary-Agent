@@ -70,7 +70,7 @@ export default function FundedPage() {
         </span>
         <p className="mt-5 text-sm font-medium text-fg-muted">You&apos;re funded</p>
         <div className="mt-1 font-display text-5xl font-bold tracking-tight text-fg tnum">
-          {data ? <AnimatedNumber value={net} prefix="$" durationMs={900} /> : <span className="text-fg-subtle">$—</span>}
+          {data ? <AnimatedNumber value={net} prefix="$" durationMs={900} /> : <span className="text-fg-subtle">$--</span>}
         </div>
         <p className="mt-2 text-fg-muted">
           is on its way to your account{data?.clientName ? ` for the ${data.clientName} invoice` : ''}.
@@ -103,7 +103,7 @@ export default function FundedPage() {
 
       {data?.agentName && (
         <p className="mt-5 text-center text-sm text-fg-muted">
-          Managed by <span className="font-medium text-fg">{data.agentName}</span> — they&apos;ll collect from your
+          Managed by <span className="font-medium text-fg">{data.agentName}</span>, who will collect from your
           client so you don&apos;t have to chase it.
         </p>
       )}
@@ -126,7 +126,7 @@ export default function FundedPage() {
           <ul className="mt-1.5 space-y-1 text-xs text-fg-muted">
             <li>· Get clients to pay on time (the biggest factor)</li>
             <li>· Work with more clients (diversity)</li>
-            <li>· Keep a clean record — no disputes</li>
+            <li>· Keep a clean record, no disputes</li>
             <li>· Build history over time</li>
           </ul>
         </div>
@@ -145,7 +145,7 @@ export default function FundedPage() {
       )}
       {proMode && data && (
         <p className="mt-1.5 text-center text-[11px] text-fg-subtle">
-          Off-ramp is stubbed — Blink is a deposit SDK with no fiat rail; seam for a real payout provider in lib/blink.ts.
+          Off-ramp is stubbed. Blink is a deposit SDK with no fiat rail; seam for a real payout provider in lib/blink.ts.
         </p>
       )}
 

@@ -78,7 +78,7 @@ export default function InvestPage() {
             <Inbox size={20} />
           </span>
           <p className="mt-4 font-medium text-fg">No invoices open for funding right now</p>
-          <p className="mt-1 text-sm text-fg-muted">Check back soon — new invoices list after each auction.</p>
+          <p className="mt-1 text-sm text-fg-muted">Check back soon. New invoices list after each auction.</p>
         </Card>
       )}
 

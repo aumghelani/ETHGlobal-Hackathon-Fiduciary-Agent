@@ -233,7 +233,7 @@ export default function InvestInvoicePage() {
         )}
         {data.pool.funded && (
           <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-brand">
-            <CheckCircle2 size={15} /> Fully funded — the freelancer has been paid.
+            <CheckCircle2 size={15} /> Fully funded. The freelancer has been paid.
           </p>
         )}
         {data.status === 'funding' && data.pool.funded && (

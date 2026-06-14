@@ -91,7 +91,7 @@ export default function SettlePage() {
     <div className="mx-auto max-w-lg">
       <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Demo control</p>
       <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-fg">Settlement</h1>
-      <p className="mt-1 text-sm text-fg-muted">Simulate the client paying — watch the money flow through.</p>
+      <p className="mt-1 text-sm text-fg-muted">Simulate the client paying, then watch the money flow through.</p>
 
       {summary && (
         <div className="mt-5 rounded-lg border border-line bg-surface p-4 text-sm shadow-sm">
@@ -168,7 +168,7 @@ export default function SettlePage() {
               )}
             </>
           )}
-          {partial && <>Could not complete the distribution — payment already settled.</>}
+          {partial && <>Could not complete the distribution. Payment already settled.</>}
         </CascadeStep>
 
         {/* Private backers — only shown when a private (Unlink) payout fired */}
@@ -176,7 +176,7 @@ export default function SettlePage() {
           <CascadeStep active={step >= 2} title="Private backers paid out" done={step >= 2}>
             {step >= 2 && (
               <>
-                Backers who funded privately received their share — sealed from everyone else.
+                Backers who funded privately received their share, sealed from everyone else.
                 {proMode && result.privatePayoutUrl && (
                   <a href={result.privatePayoutUrl} target="_blank" rel="noopener" className="ml-1 text-fg-subtle underline hover:text-fg-muted">
                     Private withdraw ↗

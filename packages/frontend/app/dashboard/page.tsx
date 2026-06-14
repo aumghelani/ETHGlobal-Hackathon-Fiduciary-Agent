@@ -136,10 +136,10 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 tnum text-fg">${i.amountUsd.toLocaleString()}</td>
                     <td className="px-4 py-3 text-fg-muted">
                       {role === 'freelancer'
-                        ? (i.acceptedAgentName ?? '—')
+                        ? (i.acceptedAgentName ?? '-')
                         : apy(i) !== null
                           ? `~${apy(i)!.toFixed(0)}% APY`
-                          : '—'}
+                          : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={i.status} />

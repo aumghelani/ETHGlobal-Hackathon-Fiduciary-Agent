@@ -110,13 +110,13 @@ export default function AuctionPage() {
           className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-fg-muted"
         >
           <span className={'h-1.5 w-1.5 rounded-full ' + (stillBidding ? 'animate-pulse bg-brand' : 'bg-fg-subtle')} />
-          {stillBidding ? 'Auction live' : 'Bids in — choose your offer'}
+          {stillBidding ? 'Auction live' : 'Bids in. Choose your offer'}
         </motion.div>
         <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-fg">
           {stillBidding ? 'Agents are competing for your invoice' : 'Two offers. Your choice.'}
         </h1>
         <p className="mx-auto mt-2 max-w-md text-fg-muted">
-          The better the agent, the less they charge — watch the gap.
+          The better the agent, the less they charge. Watch the gap.
         </p>
       </div>
 
@@ -179,7 +179,7 @@ export default function AuctionPage() {
           </div>
           <p className="px-5 pb-5 text-sm leading-relaxed text-fg-muted">
             Trust is a fee <span className="font-medium text-fg">compressor</span>, not a multiplier. The
-            market prices away the veteran&apos;s risk premium — so the most reputable agent offers the best deal.
+            market prices away the veteran&apos;s risk premium, so the most reputable agent offers the best deal.
           </p>
         </motion.div>
       )}
