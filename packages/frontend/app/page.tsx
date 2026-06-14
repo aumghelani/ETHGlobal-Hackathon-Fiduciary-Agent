@@ -1,11 +1,11 @@
 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   Zap,
   ShieldCheck,
-  Sparkles,
   Gavel,
   Coins,
   Clock,
@@ -14,6 +14,8 @@ import {
   Cpu,
   Banknote,
   Check,
+  Boxes,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -33,24 +35,12 @@ export default function Home() {
     <div className="-mt-10">
       {/* ============================ HERO ============================ */}
       <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen overflow-hidden">
-        {/* Ambient backdrop */}
+        {/* Subtle grid texture only — no colored glow. */}
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-[-10%] h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-brand/10 blur-[120px]" />
-          <div className="absolute right-[-10%] top-[30%] h-[320px] w-[420px] rounded-full bg-accent/10 blur-[120px]" />
-          <div className="absolute inset-0 grid-texture opacity-[0.5]" />
+          <div className="absolute inset-0 grid-texture opacity-40" />
         </div>
 
         <div className="mx-auto max-w-5xl px-5 pb-20 pt-20 text-center sm:pt-28">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3.5 py-1.5 text-xs font-medium text-fg-muted backdrop-blur"
-          >
-            <Sparkles size={13} className="text-brand" />
-            AI agents · real-world yield · settled on-chain
-          </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -329,17 +319,11 @@ export default function Home() {
               Each chain does something the others can&apos;t.
             </h2>
           </motion.div>
-          <div className="mt-12 grid gap-4 sm:grid-cols-3">
-            {[
-              { name: 'Hedera', body: "The agent's fee is a native HTS custom fee — enforced at the protocol layer, not by trust. Plus a consensus log so an invoice can't be sold twice." },
-              { name: 'Arc', body: 'USDC-native gas means agents need no separate gas treasury. The InvoicePool is programmable settlement: conditional release, then atomic distribution.' },
-              { name: 'Unlink', body: "Privacy as a primitive. Institutional investors don't broadcast position sizes; freelancers don't publish their income to a public ledger." },
-            ].map((s, i) => (
+          <p className="mx-auto mt-3 max-w-md text-center text-sm text-fg-subtle">Hover a card to see how.</p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {STACK.map((s, i) => (
               <motion.div key={s.name} {...reveal} transition={{ ...reveal.transition, delay: i * 0.1 }}>
-                <Card className="h-full p-6">
-                  <div className="font-display text-lg font-bold text-fg">{s.name}</div>
-                  <p className="mt-2 text-sm leading-relaxed text-fg-muted">{s.body}</p>
-                </Card>
+                <StackCard {...s} />
               </motion.div>
             ))}
           </div>
@@ -472,9 +456,6 @@ export default function Home() {
               >
                 GitHub
               </a>
-              <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg-muted">
-                Built in 36 hours
-              </span>
               <span className="text-xs text-fg-subtle">MIT</span>
             </div>
           </div>
@@ -561,6 +542,94 @@ function ScoreBar({
           style={{ width: `${pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+const STACK = [
+  {
+    name: 'Hedera',
+    icon: Boxes,
+    tagline: "Each invoice becomes a native token.",
+    detail:
+      "The agent's fee is a native HTS custom fractional fee — enforced at the protocol layer, not by trust. A Hedera Consensus Service log fingerprints every invoice so it can't be sold twice. Scheduled Transactions auto-distribute payouts at settlement.",
+    services: ['HTS · tokens', 'HSS · scheduled payouts', 'HCS · audit log'],
+  },
+  {
+    name: 'Arc',
+    icon: Coins,
+    tagline: 'Programmable USDC settlement.',
+    detail:
+      'A per-invoice InvoicePool smart contract: it releases cash to the freelancer the moment funding hits target, then atomically splits USDC to investors plus the agent fee when the client pays. Gas is paid in USDC — agents need no separate gas treasury.',
+    services: ['InvoicePool contract', 'Conditional release', 'Circle Agent Wallet'],
+  },
+  {
+    name: 'Unlink',
+    icon: EyeOff,
+    tagline: 'Privacy as a primitive.',
+    detail:
+      "Investors can back invoices privately — their identity and position size stay sealed from competitors. At settlement, private backers are paid back through a private withdrawal. Freelancers never publish their income to a public ledger.",
+    services: ['Private deposit', 'Private payout', 'Sealed positions'],
+  },
+] as const;
+
+function StackCard({
+  name,
+  icon: Icon,
+  tagline,
+  detail,
+  services,
+}: {
+  name: string;
+  icon: any;
+  tagline: string;
+  detail: string;
+  services: readonly string[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={() => setOpen((v) => !v)}
+      className={
+        'flex h-full cursor-default flex-col rounded-lg border bg-surface p-6 transition-all duration-300 ' +
+        (open ? 'border-brand/40 shadow-lg sm:-translate-y-1' : 'border-line shadow-sm')
+      }
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            'grid h-10 w-10 place-items-center rounded-lg transition-colors ' +
+            (open ? 'bg-brand text-on-brand' : 'bg-brand/12 text-brand')
+          }
+        >
+          <Icon size={18} />
+        </span>
+        <div className="font-display text-lg font-bold text-fg">{name}</div>
+      </div>
+      <p className="mt-3 text-sm font-medium text-fg">{tagline}</p>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">{detail}</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {services.map((s) => (
+                <span key={s} className="rounded-md bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-fg-muted">
+                  {s}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
