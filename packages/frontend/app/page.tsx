@@ -35,10 +35,6 @@ export default function Home() {
     <div className="-mt-10">
       {/* ============================ HERO ============================ */}
       <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen overflow-hidden">
-        {/* Subtle grid texture only — no colored glow. */}
-        <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 grid-texture opacity-40" />
-        </div>
 
         <div className="mx-auto max-w-5xl px-5 pb-20 pt-20 text-center sm:pt-28">
           <motion.h1
@@ -142,7 +138,7 @@ export default function Home() {
       </section>
 
       {/* ====================== HOW IT WORKS ====================== */}
-      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/40">
         <div className="mx-auto max-w-5xl px-5 py-20">
           <motion.div {...reveal} className="text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">How it works</p>
@@ -269,7 +265,7 @@ export default function Home() {
       </section>
 
       {/* ====================== TRUST ====================== */}
-      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/40">
         <div className="mx-auto max-w-5xl px-5 py-20">
           <motion.div {...reveal} className="text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why you can trust it</p>
@@ -311,7 +307,7 @@ export default function Home() {
       </section>
 
       {/* ====================== SPONSOR STORYTELLING ====================== */}
-      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/40">
         <div className="mx-auto max-w-5xl px-5 py-20">
           <motion.div {...reveal} className="text-center">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand">Why this stack</p>
@@ -365,7 +361,7 @@ export default function Home() {
       </section>
 
       {/* ====================== WHY NOW + AGENTS ====================== */}
-      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
+      <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/40">
         <div className="mx-auto max-w-5xl px-5 py-20">
           <div className="grid gap-12 lg:grid-cols-2">
             {/* Why now */}
@@ -422,7 +418,7 @@ export default function Home() {
       <section className="mx-auto max-w-5xl px-5 py-24">
         <motion.div
           {...reveal}
-          className="relative overflow-hidden rounded-lg border border-brand/30 bg-gradient-to-br from-brand/[0.1] to-accent/[0.08] p-10 text-center sm:p-16"
+          className="relative overflow-hidden rounded-lg border border-line bg-surface-2/50 p-10 text-center sm:p-16"
         >
           <h2 className="mx-auto max-w-2xl font-display text-3xl font-bold leading-tight tracking-tight text-fg sm:text-5xl">
             Get paid today, not in 60 days.

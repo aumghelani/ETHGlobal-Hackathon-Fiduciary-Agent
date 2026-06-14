@@ -21,10 +21,10 @@
   /* Surfaces (light) — layered, not flat */
   --bg: 250 250 249;            /* page background, warm off-white */
   --surface: 255 255 255;       /* primary card */
-  --surface-2: 248 250 252;     /* nested / subtle fill */
-  --surface-3: 241 245 249;     /* deeper fill */
-  --line: 226 232 240;          /* borders */
-  --line-strong: 203 213 225;
+  --surface-2: 249 250 251;     /* nested / subtle fill */
+  --surface-3: 243 246 249;     /* deeper fill */
+  --line: 233 237 243;          /* borders — soft, minimal */
+  --line-strong: 214 221 230;
 
   /* Text */
   --fg: 15 23 42;              /* slate-900 */
@@ -33,12 +33,13 @@
   --on-brand: 255 255 255;
 
   /* Effects */
-  --radius: 14px;              /* bento corner rounding (12-24px range) */
-  --radius-sm: 10px;
-  --radius-lg: 22px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.06), 0 2px 4px rgb(15 23 42 / 0.04);
-  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.10), 0 4px 8px rgb(15 23 42 / 0.04);
+  /* Minimal: crisper radii, much subtler elevation (lean on whitespace, not shadow). */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.03);
+  --shadow-md: 0 2px 6px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 8px 24px rgb(15 23 42 / 0.06);
   --ring: 16 185 129;
 }
 
