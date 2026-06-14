@@ -232,6 +232,52 @@ export default function Home() {
         </motion.p>
       </section>
 
+      {/* ====================== SCORING (transparent math) ====================== */}
+      <section className="mx-auto max-w-5xl px-5 py-20">
+        <motion.div {...reveal} className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">No black box</p>
+          <h2 className="mx-auto mt-3 max-w-2xl font-display text-3xl font-bold tracking-tight text-fg sm:text-4xl">
+            Reputation is transparent math.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-fg-muted">
+            Both the agent&apos;s score and your trust score are deterministic — you can see exactly what moves them.
+          </p>
+        </motion.div>
+
+        <div className="mt-12 grid gap-4 sm:grid-cols-2">
+          <motion.div {...reveal}>
+            <Card className="h-full p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-fg">Agent score</h3>
+                <span className="rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">0 – 5</span>
+              </div>
+              <p className="mt-1 text-sm text-fg-muted">Drives the fee inversion. Updates on every settlement.</p>
+              <div className="mt-4 space-y-3">
+                <ScoreBar label="Volume-weighted track record" weight="up to 3.5" pct={70} />
+                <ScoreBar label="Success rate" weight="up to 1.0" pct={20} />
+                <ScoreBar label="Recent activity" weight="up to 0.5" pct={10} />
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.1 }}>
+            <Card className="h-full p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-fg">Your trust score</h3>
+                <span className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">0 – 5</span>
+              </div>
+              <p className="mt-1 text-sm text-fg-muted">Higher score → better offers from agents.</p>
+              <div className="mt-4 space-y-3">
+                <ScoreBar label="Clean track record (disputes hurt most)" weight="biggest" pct={40} tone="accent" />
+                <ScoreBar label="Identity + ENS verified" weight="—" pct={30} tone="accent" />
+                <ScoreBar label="Client diversity" weight="—" pct={15} tone="accent" />
+                <ScoreBar label="Account age (Sybil resistance)" weight="—" pct={15} tone="accent" />
+              </div>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ====================== TRUST ====================== */}
       <section className="relative left-1/2 right-1/2 -mx-[50vw] w-screen border-y border-line bg-surface-2/60">
         <div className="mx-auto max-w-5xl px-5 py-20">
@@ -489,6 +535,33 @@ function AgentCard({
       </div>
       <p className="mt-3 text-sm italic leading-relaxed text-fg-muted">&ldquo;{quote}&rdquo;</p>
     </Card>
+  );
+}
+
+function ScoreBar({
+  label,
+  weight,
+  pct,
+  tone = 'brand',
+}: {
+  label: string;
+  weight: string;
+  pct: number;
+  tone?: 'brand' | 'accent';
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="text-fg-muted">{label}</span>
+        <span className="text-fg-subtle">{weight}</span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+        <div
+          className={'h-full rounded-full ' + (tone === 'brand' ? 'bg-brand' : 'bg-accent')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
