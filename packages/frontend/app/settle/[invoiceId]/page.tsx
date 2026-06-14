@@ -30,6 +30,8 @@ type SettleResult = {
   agentReputationAfter: number | null;
   distributedToAgentUsd: number;
   distributedToInvestorsUsd: number;
+  privatePayoutTxHash: string | null;
+  privatePayoutUrl: string | null;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -168,6 +170,22 @@ export default function SettlePage() {
           )}
           {partial && <>Could not complete the distribution — payment already settled.</>}
         </CascadeStep>
+
+        {/* Private backers — only shown when a private (Unlink) payout fired */}
+        {result?.privatePayoutTxHash && (
+          <CascadeStep active={step >= 2} title="Private backers paid out" done={step >= 2}>
+            {step >= 2 && (
+              <>
+                Backers who funded privately received their share — sealed from everyone else.
+                {proMode && result.privatePayoutUrl && (
+                  <a href={result.privatePayoutUrl} target="_blank" rel="noopener" className="ml-1 text-fg-subtle underline hover:text-fg-muted">
+                    Private withdraw ↗
+                  </a>
+                )}
+              </>
+            )}
+          </CascadeStep>
+        )}
 
         {/* Step 3 — reputation */}
         <CascadeStep active={step >= 3} title="Agent reputation updated" done={step >= 3}>

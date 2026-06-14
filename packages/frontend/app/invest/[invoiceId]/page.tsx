@@ -29,6 +29,7 @@ type InvestData = {
   hcsSequenceNumber: number | null;
   hcsTopicId: string | null;
   agentWalletAddress: string | null;
+  privatePayoutTxHash: string | null;
 };
 
 export default function InvestInvoicePage() {
@@ -126,6 +127,12 @@ export default function InvestInvoicePage() {
           />
           {data.agentName && (
             <Row label={`${data.agentName} earned`} value={<Money usd={data.agentEarnedUsd} />} />
+          )}
+          {data.privatePayoutTxHash && (
+            <Row
+              label="Private backers"
+              value={<span className="inline-flex items-center gap-1 text-brand"><Lock size={12} /> paid out</span>}
+            />
           )}
         </Card>
 

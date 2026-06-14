@@ -69,5 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: { invoiceId: s
     hcsTopicId: process.env.HEDERA_HCS_TOPIC_ID ?? null,
     // The agent's Circle-managed wallet on Arc (null if Circle isn't configured).
     agentWalletAddress: (invoice as any).agentWalletAddress ?? null,
+    // Private (Unlink) payout tx if one fired at settlement (Track E) — null otherwise.
+    privatePayoutTxHash: (invoice as any).privatePayoutTxHash ?? null,
   });
 }
