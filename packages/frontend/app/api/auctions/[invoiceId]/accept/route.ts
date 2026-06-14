@@ -92,7 +92,10 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
         feePercent: winningBid.feePercent,
         feeCollectorId: operatorId,
       });
-    } catch {
+    } catch (err) {
+      // Log the real cause (e.g. INSUFFICIENT_PAYER_BALANCE) — the 502 is intentionally
+      // generic for the user, but the server log must be diagnosable.
+      console.error('[accept] HTS mint failed:', err instanceof Error ? err.message : err);
       return NextResponse.json(
         { error: 'Could not secure the offer. Please try again.' },
         { status: 502 }
@@ -117,7 +120,8 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
     const clientPaymentUsdc = targetUsdc + 1;
     try {
       poolAddress = await deployPool(targetUsdc, clientPaymentUsdc, feeBps);
-    } catch {
+    } catch (err) {
+      console.error('[accept] Arc pool deploy failed:', err instanceof Error ? err.message : err);
       return NextResponse.json(
         { error: 'Could not secure the offer. Please try again.' },
         { status: 502 }
@@ -141,7 +145,8 @@ export async function POST(req: NextRequest, { params }: { params: { invoiceId: 
         await associateToken(tokenId!, inv1Id, inv1Key);
         await associateToken(tokenId!, inv2Id, inv2Key);
       });
-    } catch {
+    } catch (err) {
+      console.error('[accept] investor token-associate failed:', err instanceof Error ? err.message : err);
       return NextResponse.json(
         { error: 'Could not secure the offer. Please try again.' },
         { status: 502 }
