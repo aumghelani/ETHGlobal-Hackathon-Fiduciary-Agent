@@ -3,6 +3,7 @@ import { Inter, Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { NavBar } from "@/components/NavBar";
 import { UIProvider } from "@/components/providers";
+import { DynamicProvider } from "@/components/DynamicProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 // Display face for hero numbers / headlines.
@@ -24,10 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen overflow-x-hidden bg-bg font-sans text-fg antialiased">
-        <UIProvider>
-          <NavBar />
-          <main className="mx-auto max-w-6xl px-5 py-10 sm:px-6">{children}</main>
-        </UIProvider>
+        <DynamicProvider>
+          <UIProvider>
+            <NavBar />
+            <main className="mx-auto max-w-6xl px-5 py-10 sm:px-6">{children}</main>
+          </UIProvider>
+        </DynamicProvider>
       </body>
     </html>
   );

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Moon, Sun, Sparkles } from 'lucide-react';
 import { useUI } from '@/components/providers';
+import { DYNAMIC_ENABLED } from '@/components/DynamicProvider';
+import { WalletButton } from '@/components/WalletButton';
 
 const LINKS = [
   { href: '/upload', label: 'Get funded' },
@@ -40,6 +42,9 @@ export function NavBar() {
               );
             })}
           </div>
+
+          {/* Dynamic login/connect — only when configured. */}
+          {DYNAMIC_ENABLED && <WalletButton />}
 
           {/* Pro mode — reveals the crypto layer everywhere. */}
           <button
