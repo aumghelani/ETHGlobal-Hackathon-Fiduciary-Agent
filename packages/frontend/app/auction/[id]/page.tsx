@@ -64,6 +64,10 @@ export default function AuctionPage() {
   }, [invoiceId]);
 
   const handleAccept = async (bid: Bid) => {
+    // Guard against re-entry: ignore clicks while an accept is already in flight
+    // (prevents a click-flood from hammering the route with duplicate requests).
+    if (accepting) return;
+    setError(null);
     setAccepting(bid.agentName);
     try {
       const res = await fetch(`/api/auctions/${invoiceId}/accept`, {
@@ -71,13 +75,17 @@ export default function AuctionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentName: bid.agentName }),
       });
-      if (!res.ok) throw new Error('Failed to secure offer');
-      const data = await res.json();
-      console.log('Tokenized:', data);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Surface the server's real reason (e.g. funding / try-again) instead of a generic line.
+        setAccepting(null);
+        setError(data.error ?? 'Could not secure the offer. Please try again.');
+        return;
+      }
       router.push(`/funded/${invoiceId}`);
-    } catch (e: any) {
+    } catch {
       setAccepting(null);
-      setError(e.message);
+      setError('Could not reach the network. Please try again.');
     }
   };
 
