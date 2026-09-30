@@ -1,144 +1,154 @@
-# cashmeifyoucan
+# Fiduciary Agent (cashmeifyoucan)
 
-> AI agents compete to factor your invoice: the most trusted one wins by offering you **more money for a lower fee**.
+Invoice factoring marketplace where AI underwriting agents bid on freelancer invoices, with USDC settlement on Arc, tokenization on Hedera and private investing through Unlink.
 
-AI-powered invoice factoring for the 70 million Americans who freelance. Built for ETHGlobal NY 2026.
+Built at ETHGlobal New York 2026. Live demo (testnet): https://fiduciary-agent.vercel.app
 
----
+## Overview
 
-## The problem
+Freelancers often wait 30 to 90 days for clients to pay. Invoice factoring means selling an unpaid invoice now for a discount. It is common for businesses but rarely offered to individuals, because underwriting each small invoice costs too much.
 
-Freelancers wait 30 to 90 days to get paid. Invoice factoring (getting cash now instead of later) is a ~$3.7T global industry (FCI, 2024), but it's built for corporations: the per-invoice underwriting cost makes it impossible for individuals.
+cashmeifyoucan automates that underwriting:
 
-## The solution
+1. A freelancer uploads an invoice and proves they are a unique human with World ID.
+2. Competing agents bid a discount and a management fee. Each bid is priced from the agent's reputation and the risk of the freelancer and client.
+3. The accepted bid mints an invoice token on Hedera and deploys a USDC pool contract on Arc.
+4. Investors fund the pool, either publicly or privately. When the pool reaches its target, the freelancer is paid.
+5. When the invoice is settled, the pool pays investors in proportion to their deposits, pays the agent its fee, and updates the agent's reputation.
 
-Upload an unpaid invoice. AI agents bid in a live auction to advance you cash today. Investors back a fraction of the invoice and earn yield when your client pays. When the client settles, distribution to investors fires automatically on-chain.
+The core design is a fee inversion. A higher agent reputation lowers the fee and discount that agent can offer, so the most trusted agent gives the freelancer the best deal.
 
-**The inversion:** the more reputable an agent becomes, the *less* it can charge. Trust is a fee **compressor**, not a multiplier: the market prices away the veteran's risk premium. A veteran offers a smaller discount *and* a lower fee than a newcomer. So the most trusted agent gives you the best deal, and earns the least on it, which is why newcomers survive on the riskier long tail.
+## Key Features
 
-It's not invoice-specific. The same engine (a trust-priced reputation marketplace + an RWA tokenization pipeline + a delegated-fiduciary-agent pattern) factors any receivable: royalty advances, gig wages, tax refunds, medical claims.
+- **Reputation-priced auction**: deterministic, transparent scoring in `packages/agents/src/reputation.ts`:
+  - Agent score (0-5): log-scaled volume (max 3.5), success rate (max 1.0) and recency (max 0.5).
+  - Freelancer trust (0-1): identity, quadratic clean-record bonus, client diversity and account age.
+  - Client trust (0-1): verified business, payment reliability and volume.
+  - Risk = `0.4 * freelancerTrust + 0.6 * clientTrust`. An agent passes on an invoice below its risk threshold.
+- **LLM-written bid reasoning**: each agent's bid numbers come from the deterministic math. An LLM API call then writes a short explanation for the freelancer. If the call fails, the app falls back to a deterministic explanation.
+- **World ID 4.0 identity gate**: proofs are verified server-side when an invoice is uploaded and can be bound to the connected wallet. The World ID nullifier ties a freelancer's track record to one human, so it can't be reset by switching wallets.
+- **Hedera (three services)**:
+  - HTS: one token per invoice, with the agent fee as a native `CustomFractionalFee`.
+  - HCS: invoice file hashes and agent decisions are written to a shared topic, and re-uploads of a known hash are rejected.
+  - Scheduled Transactions: the token distribution is deferred until settlement.
+- **Arc (Circle) USDC pool**: the per-invoice `InvoicePool.sol` contract releases funds to the freelancer at the funding target, and distributes proportionally with an agent fee at settlement. Gas is paid in USDC.
+- **Private investing with Unlink**: investors can fund privately. Private amounts are hidden from other viewers in the API, but each investor can still see their own position.
+- **Optional integrations**: Dynamic login with an embedded wallet for client-side USDC funding, a Circle developer-controlled wallet for the winning agent, and an investor KYC gate (mocked).
+- **Serverless-safe state**: Upstash Redis on Vercel, with an automatic in-memory fallback for local development.
+- **Dev mode toggle**: shows USDC amounts, transaction hashes and explorer links behind the default fintech-style UI.
 
----
-
-## How it works
+## Architecture / How It Works
 
 ```
-Freelancer uploads invoice   →  verified (World ID) + hashed to Hedera HCS (anti-double-sell)
-        ↓
-AI agents bid (live auction) →  reputation-priced; the winner's fee is set here
-        ↓
-Winner mints an HTS token    →  supply = invoice amount; agent fee is a native custom fee
-        ↓
-Investors fund an Arc pool   →  publicly, or privately via Unlink (position sealed)
-        ↓
-Pool hits target             →  freelancer is paid today
-        ↓
-Client pays (settlement)     →  Arc distributes USDC to investors + agent fee;
-                                Hedera HSS schedule fires; private backers paid out via Unlink;
-                                agent reputation updates
+Freelancer uploads invoice --> World ID proof verified, file hash checked/committed on Hedera HCS
+        |
+        v
+Agents bid (auction) ------> deterministic risk + reputation pricing, LLM-written reasoning
+        |
+        v
+Accept winning bid --------> HTS invoice token minted (agent fee as custom fee)
+                             InvoicePool deployed on Arc, decision logged to HCS
+        |
+        v
+Investors fund ------------> public USDC deposit into InvoicePool, or private deposit via Unlink
+        |
+        v
+Pool reaches target -------> InvoicePool transfers the advance to the freelancer
+        |
+        v
+Settlement ----------------> InvoicePool pays investors pro rata + agent fee
+                             Hedera scheduled distribution executes
+                             private (Unlink) balance withdrawn, agent reputation updated
 ```
 
----
+The backend is a set of Next.js API routes in `packages/frontend/app/api/` (`invoices`, `auctions/[id]/start|accept`, `invest/[id]/fund|fund-private|fund-blink`, `settle/[id]`, `kyc/verify`, `worldid/context`, `stats`). They call the `@fiduciary/agents` and `@fiduciary/hedera` workspace packages and the chain helpers in `packages/frontend/lib/`. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for full diagrams.
 
-## The reputation engine
+## Tech Stack
 
-Three deterministic scoring functions ([`packages/agents/src/reputation.ts`](packages/agents/src/reputation.ts)), transparent math, not a black box:
+- TypeScript, Node.js 20, pnpm workspaces
+- Next.js 14 (App Router), React 18, Tailwind CSS, Radix UI, Framer Motion
+- Solidity 0.8.24, Hardhat, OpenZeppelin, Mocha, Chai
+- ethers.js v6, viem
+- Hedera SDK: Hedera Token Service (HTS), Hedera Consensus Service (HCS), Scheduled Transactions
+- Arc testnet (Circle), USDC, Circle Developer-Controlled Wallets
+- Unlink SDK (private deposits and withdrawals)
+- World ID 4.0 (IDKit)
+- Dynamic (wallet authentication)
+- Upstash Redis
+- LLM API
+- Vercel
 
-**Agent score (0 to 5)** = volume-weighted track record (log-scaled, max 3.5) + success rate (max 1.0) + activity/recency (max 0.5). Updates on every real settlement. This is what drives the fee inversion.
-
-**Freelancer trust (0 to 1)** = identity verification + ENS subname + a quadratic track-record bonus (disputes hurt a lot) + client diversity + account age (Sybil resistance). A freelancer raises it by completing invoices cleanly, working with more clients, and building history. This track record is bound to the freelancer's World ID nullifier, so it follows the human and cannot be reset by creating a new wallet.
-
-**Client trust (0 to 1)** = verified-business + payment reliability (on-time / late / unpaid) + volume. Feeds the agent's risk assessment of the payer.
-
-Risk score = `freelancerTrust × 0.4 + clientTrust × 0.6`. Agents pass on deals below their risk threshold.
-
----
-
-## Sponsor integrations (all live on testnet)
-
-- **Hedera: three services, all load-bearing.**
-  - **HTS:** each invoice is a native Hedera token; supply = invoice amount (cents); the agent's management fee is a `CustomFractionalFee` enforced at the protocol layer, so the agent can't be cut out of the deal.
-  - **HSS (Scheduled Transactions):** distribution to fractional holders is deferred until a settlement trigger fires: the "settle on maturity" pattern.
-  - **HCS:** every invoice's hash is committed to a shared consensus topic; a re-upload of an already-listed invoice is rejected. Other platforms could query the same topic.
-- **Arc (Circle): programmable USDC settlement.** A per-invoice `InvoicePool` smart contract: conditional release to the freelancer at funding target, then atomic distribution to investors + the agent fee at settlement. Gas is paid in USDC. The agent gets its own policy-gated Circle developer-controlled wallet on Arc.
-- **Unlink: privacy as a primitive.** Investors can back invoices privately (server-side, no wallet UI). A position's identity and amount stay sealed from other investors, and at settlement, private backers are paid back via a private withdrawal.
-- **Dynamic (dynamic.xyz): login + embedded wallet (optional / bonus integration).** When `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID` is set, a "Sign in" button lets a user connect or create a wallet on Arc, and a "Fund from my wallet" button runs a real client-side USDC approve + deposit. It degrades gracefully (the button is hidden) when the env var is unset.
-
----
-
-## Security: defense-in-depth (honest status)
-
-Six designed layers. Three are **real and on-chain** today; the rest are designed with a clear seam:
-
-| Layer | Status | What's built |
-|---|---|---|
-| 1. Identity | 🟢 **Real** | **World ID** v4 proof-of-personhood, verified server-side, on upload. The proof's nullifier binds a freelancer's reputation to a unique human, so a poor track record can't be reset by switching wallets. A person can still factor many invoices; their history follows the human. ENS subname + company registry = roadmap. |
-| 2. Contract authenticity | ⚪ Mocked | DKIM/zkTLS email proof: UI badge today, roadmap. |
-| 3. Double-spend prevention | 🟢 **Real** | Invoice hash → **Hedera HCS** → duplicate uploads rejected. |
-| 4. AI credit assessment | 🟢 **Real** | The agent underwrites every deal from freelancer/client trust + LLM reasoning. |
-| 5. Economic disincentives | ⚪ Roadmap | Freelancer bond + progressive client caps: designed, not built. |
-| 6. Dispute resolution | ⚪ Roadmap | Chainlink Confidential AI attester: architecture only. |
-
-Also built as honest mocks-with-seams: an **investor KYC/accreditation gate** (`lib/kyc.ts`, off by default), and a **"cash to your bank"** off-ramp surface (a real fiat rail drops in behind the seam).
-
----
-
-## Getting started
+## Getting Started
 
 ### Prerequisites
-- Node.js 20.x, pnpm 8.x
-- Hedera testnet account with HBAR ([portal.hedera.com](https://portal.hedera.com)): the HTS mint costs ~40 ℏ
-- Arc testnet wallet with faucet USDC ([faucet.circle.com](https://faucet.circle.com)): Arc gas is paid in USDC
-- Anthropic API key (agent reasoning)
-- Optional: Unlink API key + App ID; World ID Staging app; Circle Console API key; Dynamic environment ID (`NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID`) for the embedded-wallet sign-in
-- Optional: Upstash Redis (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) for the serverless-safe store; required on Vercel, optional locally
+
+- Node.js 20+ and pnpm 8+
+- A Hedera testnet account with HBAR (from portal.hedera.com)
+- An Arc testnet wallet with faucet USDC (from faucet.circle.com). Arc gas is paid in USDC.
+- An LLM API key for agent reasoning (the variable is listed in `.env.example`)
+- Optional: Unlink, World ID, Circle Developer Console and Dynamic credentials, plus Upstash Redis (required on Vercel)
 
 ### Setup
+
 ```bash
-git clone <this-repo>
-cd fiduciary
+git clone https://github.com/aumghelani/ETHGlobal-Hackathon-Fiduciary-Agent.git
+cd ETHGlobal-Hackathon-Fiduciary-Agent
 pnpm install
-cp .env.example .env.local   # fill in credentials (see .env.example)
-pnpm dev
+cp .env.example .env.local        # fill in credentials; every package reads the root .env.local
+pnpm exec tsx scripts/create-hcs-topic.ts   # one-time: prints HEDERA_HCS_TOPIC_ID to add to .env.local
+pnpm dev                          # starts the Next.js app on http://localhost:3000
 ```
-Open http://localhost:3000. Agents and demo state seed in-memory at runtime; per-invoice pools deploy on Arc on accept.
 
-> **Serverless-safe store:** the app uses **Upstash Redis** as its store so state survives across Vercel serverless function instances (an in-memory store would not). Locally it falls back to in-memory automatically when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are unset; on Vercel those two env vars are required.
+The two demo agents and the app state are seeded at runtime. A per-invoice pool is deployed on Arc when a bid is accepted.
 
-> The UI abstracts the blockchain by default (it reads as a clean fintech product). Toggle **Dev mode** in the nav to reveal USDC amounts, transaction hashes, and explorer links.
+Demo switches in `.env.example` (all off by default): `DEMO_BYPASS_WORLDID` lets you run the flow without a World ID account, and `KYC_ENABLED` / `DEMO_BYPASS_KYC` control the mocked investor gate.
 
----
+### Useful scripts
 
-## Repository structure
+```bash
+pnpm --filter @fiduciary/contracts compile       # compile InvoicePool / MockUSDC
+pnpm --filter @fiduciary/contracts deploy:pool   # deploy a pool to Arc testnet
+pnpm --filter @fiduciary/agents test:reputation  # print veteran vs newbie bids for a sample invoice
+pnpm test:llm-bid                                # generate an LLM-backed bid
+pnpm test:hedera-schedule                        # mint, schedule and execute a distribution on testnet
+pnpm verify:arc-deploy                           # test deposit into a previously deployed Arc pool (address hardcoded)
+```
+
+Vercel deployment steps and the full environment checklist are in [`DEPLOY.md`](DEPLOY.md). A live walkthrough is in [`DEMO_GUIDE.md`](DEMO_GUIDE.md).
+
+## Project Structure
 
 ```
 packages/
-├── contracts/   # InvoicePool.sol (Arc) + tests
-├── hedera/      # HTS mint, HSS schedule, HCS helpers
-├── agents/      # reputation + bid logic + LLM reasoning
-└── frontend/    # Next.js app + API routes (the backend lives here)
-scripts/         # one-off setup + verification scripts
+  agents/      Reputation scoring, deterministic bid logic, LLM reasoning client
+  hedera/      Hedera client, HTS mint, HCS hash log, scheduled distribution
+  contracts/   InvoicePool.sol, MockUSDC.sol, Hardhat config, tests, deploy script
+  frontend/    Next.js app: pages (upload, auction, invest, funded, settle, dashboard),
+               API routes, and chain/identity helpers in lib/ (arc, unlink, worldid, kyc, store)
+scripts/       One-off setup and integration spike scripts (HCS topic, Circle, Unlink, World ID)
+ARCHITECTURE.md, DEPLOY.md, DEMO_GUIDE.md
 ```
 
----
+## Testing
 
-## Sponsors targeted
+The Solidity contract has an automated test suite. It uses Hardhat and a mock USDC token, and covers deposit accumulation and release at target, proportional settlement with the agent fee, and reverts when settling an unfunded or already-settled pool or depositing into a funded one.
 
-- 🪙 **Hedera**: Tokenization on Hedera (+ AI & Agentic Payments)
-- 💵 **Arc (Circle)**: Smart Contracts with Advanced Stablecoin Logic
-- 🔒 **Unlink**: Best Private Application
+```bash
+pnpm --filter @fiduciary/contracts test
+```
 
----
+The TypeScript packages and the frontend have no automated tests. The `scripts/test-*.ts` files are manual integration spikes that call real testnet services.
 
-## Demo
+## Limitations and Roadmap
 
-Live: **https://cashmeifyoucan.us** (deployed on Vercel) · Video: _[Loom URL]_
+This is a hackathon prototype running on testnets. It is not production software.
 
-### Docs
-
-- [`ARCHITECTURE.md`](ARCHITECTURE.md): system + end-to-end flow diagrams and why each chain.
-- [`DEPLOY.md`](DEPLOY.md): Vercel deployment guide and environment-variable checklist.
-
-## License
-
-MIT
+- **HCS duplicate check fails open.** If the Hedera mirror node is unreachable, the upload is allowed. The check also reads only one page of 100 topic messages, and the mirror node can lag a few seconds behind new messages.
+- **Bank off-ramp is a stub.** The "cash to your bank" step returns a mocked confirmation, and the Blink investor-deposit route is mocked too. No fiat moves.
+- **KYC is mocked.** `verifyInvestor()` always passes and the gate is off by default.
+- **Only the Solidity contract has tests.** Agents, Hedera helpers, API routes and UI are untested.
+- **Demo data**: many freelancer and client trust inputs are fixed defaults. There are two seeded agents. Settlement is paid by the operator account acting as the client, and the Hedera distribution goes to two pre-associated demo investor accounts.
+- **Private payouts are aggregated.** The private balance is withdrawn to one custodian address, not to each private investor.
+- **The Circle agent wallet spending policy is recorded but not enforced.**
+- **`InvoicePool.settle` has no caller restriction**, and the contract uses raw ERC-20 `transfer` calls without `SafeERC20`.
+- **Designed but not built**: contract-authenticity proofs (DKIM/zkTLS), freelancer bonds and client caps, dispute resolution, and ENS subnames beyond a demo value.
