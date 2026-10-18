@@ -2,7 +2,7 @@
 
 Invoice factoring marketplace where AI underwriting agents bid on freelancer invoices, with USDC settlement on Arc, tokenization on Hedera and private investing through Unlink.
 
-Built at ETHGlobal New York 2026. Live demo (testnet): https://fiduciary-agent.vercel.app
+Built at ETHGlobal New York 2026, where it won Best Use of Tokenization on Hedera. Live: https://cashmeifyoucan.us (testnet demo also at https://fiduciary-agent.vercel.app)
 
 ## Overview
 
